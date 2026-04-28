@@ -203,7 +203,7 @@
       const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual.
 
 REGLAS:
-- Cuando el usuario dé un monto, calcula IVA al 16% automáticamente SIN preguntar. Asume que es SUBTOTAL.
+- Cuando el usuario dé un monto, asume que es el TOTAL CON IVA INCLUIDO. Subtotal = total/1.16, IVA = total - subtotal. NUNCA sumes IVA encima del monto dado.
 - Si dice "total con IVA", subtotal = total/1.16.
 - NUNCA pierdas el contexto de la conversación.
 - Cuando registres una venta o gasto, incluye al final de tu respuesta un bloque JSON así:
