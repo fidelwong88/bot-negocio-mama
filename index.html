@@ -242,7 +242,7 @@ Usa $ y formato mexicano para dinero.`;
         const match = reply.match(/REGISTRAR_VENTA:(\{.*?\})/s);
         if (match) {
           const venta = JSON.parse(match[1]);
-          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal]]);
+          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal, '=D{ROW}*0.16', '=D{ROW}+E{ROW}']]);
           sheetData = null; // Refresh data
           reply = reply.replace(/REGISTRAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta registrada en Google Sheets!';
         }
