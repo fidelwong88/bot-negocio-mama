@@ -101,28 +101,28 @@
   let connected = false;
   let sheetData = null;
   let history = [];
- 
+
   window.addEventListener('load', () => {
     const k = localStorage.getItem('bot_api_key');
     const s = localStorage.getItem('bot_sheet_id');
     if (k) document.getElementById('apiKey').value = k;
     if (s) document.getElementById('sheetId').value = s;
   });
- 
+
   function preguntar(el) {
     document.getElementById('input').value = el.textContent.trim().replace(/^[^\w]+/, '');
     sendMessage();
   }
- 
+
   function autoResize(el) {
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }
- 
+
   function handleKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   }
- 
+
   async function conectar() {
     const apiKey = document.getElementById('apiKey').value.trim();
     const sheetId = document.getElementById('sheetId').value.trim();
@@ -140,7 +140,7 @@
       addMessage('bot', '❌ Error conectando: ' + e.message);
     }
   }
- 
+
   async function fetchSheets(sheetId) {
     const names = ['VENTAS','GASTOS','RESUMEN SAT'];
     const data = {};
@@ -152,7 +152,7 @@
     }
     return data;
   }
- 
+
   function parseCSV(text) {
     return text.trim().split('\n').map(line => {
       const cols = []; let cur = ''; let q = false;
@@ -165,7 +165,7 @@
       return cols;
     });
   }
- 
+
   function buildContext(data) {
     let ctx = '';
     if (data['VENTAS']?.length > 1) {
@@ -184,7 +184,7 @@
     }
     return ctx || 'Sin datos aún.';
   }
- 
+
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
@@ -192,40 +192,38 @@
     const apiKey = document.getElementById('apiKey').value.trim();
     const sheetId = document.getElementById('sheetId').value.trim();
     if (!apiKey) { addMessage('bot', '❌ Ingresa tu API Key primero.'); return; }
- 
+
     addMessage('user', text);
     input.value = '';
     input.style.height = 'auto';
- 
+
     // Agregar al historial ANTES de llamar a la API
     history.push({ role: 'user', content: text });
- 
+
     const typingId = addTyping();
- 
+
     try {
       if (!sheetData) sheetData = await fetchSheets(sheetId);
       const ctx = buildContext(sheetData);
- 
+
       const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual y amigable.
- 
+
 REGLAS IMPORTANTES:
 - Cuando el usuario dé un monto, calcula el IVA al 16% automáticamente SIN preguntar. Asume que es SUBTOTAL a menos que diga "total con IVA".
 - Si dice "total con IVA", el subtotal es total/1.16.
 - NUNCA pierdas el contexto de la conversación anterior.
 - Registra ventas y gastos directamente sin hacer preguntas innecesarias.
- 
+
 DATOS DEL NEGOCIO:
 ${ctx}
- 
+
 Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
- 
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+
+      const res = await fetch('https://bot-negocio-mama.fidelwong753.workers.dev/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
+         
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
@@ -234,26 +232,26 @@ Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
           messages: history
         })
       });
- 
+
       removeTyping(typingId);
- 
+
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error?.message || 'Error API');
       }
- 
+
       const data = await res.json();
       const reply = data.content[0].text;
       history.push({ role: 'assistant', content: reply });
       addMessage('bot', reply);
- 
+
     } catch(e) {
       removeTyping(typingId);
       history.pop(); // Quitar mensaje fallido del historial
       addMessage('bot', '❌ Error: ' + e.message);
     }
   }
- 
+
   function addMessage(role, text) {
     const msgs = document.getElementById('messages');
     const div = document.createElement('div');
@@ -269,7 +267,7 @@ Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
- 
+
   function addTyping() {
     const msgs = document.getElementById('messages');
     const div = document.createElement('div');
@@ -281,7 +279,7 @@ Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
     msgs.scrollTop = msgs.scrollHeight;
     return id;
   }
- 
+
   function removeTyping(id) {
     const el = document.getElementById(id);
     if (el) el.remove();
