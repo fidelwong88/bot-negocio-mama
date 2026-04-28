@@ -242,7 +242,7 @@ Usa $ y formato mexicano para dinero.`;
         const match = reply.match(/REGISTRAR_VENTA:(\{.*?\})/s);
         if (match) {
           const venta = JSON.parse(match[1]);
-          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal, venta.iva, venta.total]]);
+          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal]]);
           sheetData = null; // Refresh data
           reply = reply.replace(/REGISTRAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta registrada en Google Sheets!';
         }
@@ -253,7 +253,7 @@ Usa $ y formato mexicano para dinero.`;
         const match = reply.match(/REGISTRAR_GASTO:(\{.*?\})/s);
         if (match) {
           const gasto = JSON.parse(match[1]);
-          await appendToSheet('GASTOS', [[gasto.fecha, gasto.concepto, gasto.proveedor, gasto.subtotal, gasto.iva, gasto.total]]);
+          await appendToSheet('GASTOS', [[gasto.fecha, gasto.concepto, gasto.proveedor, gasto.subtotal]]);
           sheetData = null;
           reply = reply.replace(/REGISTRAR_GASTO:\{.*?\}/s, '') + '\n\n✅ ¡Gasto registrado en Google Sheets!';
         }
