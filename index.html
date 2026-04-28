@@ -21,12 +21,11 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .config-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .config-bar label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; }
-  .config-bar input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; width: 240px; outline: none; transition: border-color 0.2s; }
+  .config-bar input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; width: 240px; outline: none; }
   .config-bar input:focus { border-color: var(--accent); }
   .config-bar button { background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .config-bar button:hover { background: var(--accent2); }
   .connected-badge { font-size: 11px; color: var(--accent); font-family: 'DM Mono', monospace; display: none; }
-  .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
   .message { display: flex; gap: 10px; max-width: 80%; animation: fadeIn 0.3s ease; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .message.user { align-self: flex-end; flex-direction: row-reverse; }
@@ -36,23 +35,21 @@
   .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
   .message.bot .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-top-left-radius: 4px; }
   .message.user .bubble { background: var(--user-bubble); border: 1px solid #1e5c42; border-top-right-radius: 4px; color: #b8f0d8; }
-  .bubble table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; font-family: 'DM Mono', monospace; }
-  .bubble th { background: var(--surface2); padding: 8px 12px; text-align: left; color: var(--accent); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .bubble table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .bubble th { background: var(--surface2); padding: 8px 12px; text-align: left; color: var(--accent); font-size: 11px; border-bottom: 1px solid var(--border); }
   .bubble td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
-  .bubble tr:last-child td { border-bottom: none; }
   .quick-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  .quick-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+  .quick-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
   .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
   .typing { display: flex; gap: 4px; align-items: center; padding: 14px 16px; }
   .typing span { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s infinite; }
   .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
   @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
   .input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; align-items: flex-end; }
-  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; resize: none; outline: none; line-height: 1.5; max-height: 120px; transition: border-color 0.2s; }
+  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; resize: none; outline: none; line-height: 1.5; max-height: 120px; }
   textarea:focus { border-color: var(--accent); }
   textarea::placeholder { color: var(--muted); }
-  .send-btn { background: var(--accent); border: none; color: #000; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; }
-  .send-btn:hover { background: var(--accent2); }
+  .send-btn { background: var(--accent); border: none; color: #000; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .send-btn svg { width: 18px; height: 18px; }
 </style>
 </head>
@@ -67,9 +64,7 @@
 </header>
 <div class="config-bar">
   <label>Sheet ID:</label>
-  <input type="text" id="sheetId" placeholder="ID de tu Google Sheet..." value="1Fb_WVSHJfwNihg1-ETL3HuVtOkbH1MD8sDxrD6LFZ30" />
-  <label>API Key:</label>
-  <input type="password" id="apiKey" placeholder="sk-ant-..." />
+  <input type="text" id="sheetId" value="1Fb_WVSHJfwNihg1-ETL3HuVtOkbH1MD8sDxrD6LFZ30" />
   <button onclick="conectar()">Conectar</button>
   <span class="connected-badge" id="connectedBadge">✓ Conectado</span>
 </div>
@@ -78,7 +73,7 @@
     <div class="avatar">🤖</div>
     <div class="bubble">
       ¡Hola! Soy el asistente del negocio de tu mamá. 👋<br><br>
-      Ingresa tu <strong>API Key de Claude</strong> y haz clic en <strong>Conectar</strong>.
+      Haz clic en <strong>Conectar</strong> para empezar.
       <div class="quick-btns">
         <span class="quick-btn" onclick="preguntar(this)">📊 Ver resumen del mes</span>
         <span class="quick-btn" onclick="preguntar(this)">💰 ¿Cuánto debo al SAT?</span>
@@ -98,14 +93,12 @@
   </button>
 </div>
 <script>
-  let connected = false;
+  const WORKER_URL = 'https://bot-negocio-mama.fidelwong753.workers.dev';
   let sheetData = null;
   let history = [];
 
   window.addEventListener('load', () => {
-    const k = localStorage.getItem('bot_api_key');
     const s = localStorage.getItem('bot_sheet_id');
-    if (k) document.getElementById('apiKey').value = k;
     if (s) document.getElementById('sheetId').value = s;
   });
 
@@ -124,18 +117,14 @@
   }
 
   async function conectar() {
-    const apiKey = document.getElementById('apiKey').value.trim();
     const sheetId = document.getElementById('sheetId').value.trim();
-    if (!apiKey) { addMessage('bot', '❌ Ingresa tu API Key.'); return; }
     addMessage('bot', '🔄 Conectando con Google Sheets...');
     try {
       sheetData = await fetchSheets(sheetId);
-      connected = true;
       history = [];
-      localStorage.setItem('bot_api_key', apiKey);
       localStorage.setItem('bot_sheet_id', sheetId);
       document.getElementById('connectedBadge').style.display = 'inline';
-      addMessage('bot', '✅ ¡Conectado! ¿Qué quieres saber?');
+      addMessage('bot', '✅ ¡Conectado! Puedo leer y escribir en tus hojas. ¿Qué necesitas?');
     } catch(e) {
       addMessage('bot', '❌ Error conectando: ' + e.message);
     }
@@ -166,6 +155,16 @@
     });
   }
 
+  async function appendToSheet(sheet, values) {
+    const sheetId = document.getElementById('sheetId').value.trim();
+    const res = await fetch(`${WORKER_URL}/api/sheets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId, range: sheet, values })
+    });
+    return await res.json();
+  }
+
   function buildContext(data) {
     let ctx = '';
     if (data['VENTAS']?.length > 1) {
@@ -189,42 +188,37 @@
     const input = document.getElementById('input');
     const text = input.value.trim();
     if (!text) return;
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const sheetId = document.getElementById('sheetId').value.trim();
-    if (!apiKey) { addMessage('bot', '❌ Ingresa tu API Key primero.'); return; }
 
     addMessage('user', text);
     input.value = '';
     input.style.height = 'auto';
-
-    // Agregar al historial ANTES de llamar a la API
     history.push({ role: 'user', content: text });
 
     const typingId = addTyping();
 
     try {
-      if (!sheetData) sheetData = await fetchSheets(sheetId);
+      if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
       const ctx = buildContext(sheetData);
 
-      const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual y amigable.
+      const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual.
 
-REGLAS IMPORTANTES:
-- Cuando el usuario dé un monto, calcula el IVA al 16% automáticamente SIN preguntar. Asume que es SUBTOTAL a menos que diga "total con IVA".
-- Si dice "total con IVA", el subtotal es total/1.16.
-- NUNCA pierdas el contexto de la conversación anterior.
-- Registra ventas y gastos directamente sin hacer preguntas innecesarias.
+REGLAS:
+- Cuando el usuario dé un monto, calcula IVA al 16% automáticamente SIN preguntar. Asume que es SUBTOTAL.
+- Si dice "total con IVA", subtotal = total/1.16.
+- NUNCA pierdas el contexto de la conversación.
+- Cuando registres una venta o gasto, incluye al final de tu respuesta un bloque JSON así:
+  REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","subtotal":0,"iva":0,"total":0}
+  o para gastos:
+  REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","subtotal":0,"iva":0,"total":0}
 
 DATOS DEL NEGOCIO:
 ${ctx}
 
-Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
+Usa $ y formato mexicano para dinero.`;
 
-      const res = await fetch('https://bot-negocio-mama.fidelwong753.workers.dev/api/chat', {
+      const res = await fetch(`${WORKER_URL}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-         
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 1000,
@@ -241,13 +235,36 @@ Usa formato HTML para tablas. Usa $ y formato mexicano para dinero.`;
       }
 
       const data = await res.json();
-      const reply = data.content[0].text;
+      let reply = data.content[0].text;
+
+      // Detectar si hay que registrar venta
+      if (reply.includes('REGISTRAR_VENTA:')) {
+        const match = reply.match(/REGISTRAR_VENTA:(\{.*?\})/s);
+        if (match) {
+          const venta = JSON.parse(match[1]);
+          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal, venta.iva, venta.total]]);
+          sheetData = null; // Refresh data
+          reply = reply.replace(/REGISTRAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta registrada en Google Sheets!';
+        }
+      }
+
+      // Detectar si hay que registrar gasto
+      if (reply.includes('REGISTRAR_GASTO:')) {
+        const match = reply.match(/REGISTRAR_GASTO:(\{.*?\})/s);
+        if (match) {
+          const gasto = JSON.parse(match[1]);
+          await appendToSheet('GASTOS', [[gasto.fecha, gasto.concepto, gasto.proveedor, gasto.subtotal, gasto.iva, gasto.total]]);
+          sheetData = null;
+          reply = reply.replace(/REGISTRAR_GASTO:\{.*?\}/s, '') + '\n\n✅ ¡Gasto registrado en Google Sheets!';
+        }
+      }
+
       history.push({ role: 'assistant', content: reply });
       addMessage('bot', reply);
 
     } catch(e) {
       removeTyping(typingId);
-      history.pop(); // Quitar mensaje fallido del historial
+      history.pop();
       addMessage('bot', '❌ Error: ' + e.message);
     }
   }
