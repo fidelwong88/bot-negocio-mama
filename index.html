@@ -203,13 +203,13 @@
       const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual.
 
 REGLAS:
-- Cuando el usuario dé un monto, asume que es el TOTAL CON IVA INCLUIDO. Subtotal = total/1.16, IVA = total - subtotal. NUNCA sumes IVA encima del monto dado.
-- Si dice "total con IVA", subtotal = total/1.16.
+- Cuando el usuario registre una venta o gasto, usa el monto exacto que dio como TOTAL. No calcules ni muestres subtotal ni IVA en el chat, eso lo hace Google Sheets automáticamente.
+- Solo confirma que registraste la venta con el total, fecha y cliente. Nada más.
 - NUNCA pierdas el contexto de la conversación.
 - Cuando registres una venta o gasto, incluye al final de tu respuesta un bloque JSON así:
-  REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","subtotal":0,"iva":0,"total":0}
+  REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
   o para gastos:
-  REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","subtotal":0,"iva":0,"total":0}
+  REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 
 DATOS DEL NEGOCIO:
 ${ctx}
@@ -242,8 +242,8 @@ Usa $ y formato mexicano para dinero.`;
         const match = reply.match(/REGISTRAR_VENTA:(\{.*?\})/s);
         if (match) {
           const venta = JSON.parse(match[1]);
-          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.subtotal]]);
-          sheetData = null; // Refresh data
+          await appendToSheet('VENTAS', [[venta.fecha, venta.folio, venta.cliente, venta.total]]);
+          sheetData = null;
           reply = reply.replace(/REGISTRAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta registrada en Google Sheets!';
         }
       }
@@ -253,7 +253,7 @@ Usa $ y formato mexicano para dinero.`;
         const match = reply.match(/REGISTRAR_GASTO:(\{.*?\})/s);
         if (match) {
           const gasto = JSON.parse(match[1]);
-          await appendToSheet('GASTOS', [[gasto.fecha, gasto.concepto, gasto.proveedor, gasto.subtotal]]);
+          await appendToSheet('GASTOS', [[gasto.fecha, gasto.concepto, gasto.proveedor, gasto.total]]);
           sheetData = null;
           reply = reply.replace(/REGISTRAR_GASTO:\{.*?\}/s, '') + '\n\n✅ ¡Gasto registrado en Google Sheets!';
         }
