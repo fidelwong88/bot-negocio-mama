@@ -185,6 +185,17 @@
     return await res.json();
   }
 
+  // Extrae todos los JSONs de un comando en el reply
+  function extractAll(reply, comando) {
+    const regex = new RegExp(comando + ':(\\{[^{}]+\\})', 'g');
+    const results = [];
+    let match;
+    while ((match = regex.exec(reply)) !== null) {
+      try { results.push(JSON.parse(match[1])); } catch(e) {}
+    }
+    return results;
+  }
+
   function buildContext(data) {
     let ctx = '';
     if (data['VENTAS']?.length > 1) {
@@ -232,8 +243,9 @@ REGLAS ESTRICTAS:
 - Solo confirma: cliente, total exacto y fecha. Nada más.
 - NUNCA pierdas el contexto de la conversación.
 - Siempre tienes acceso a TODOS los datos aunque sean de hace mucho tiempo.
+- IMPORTANTE: Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
 
-ACCIONES DISPONIBLES — incluye el JSON al final de tu respuesta:
+ACCIONES DISPONIBLES — pon cada JSON en su propia línea al final de tu respuesta:
 
 Registrar venta:
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -278,72 +290,59 @@ Usa $ y formato mexicano para dinero.`;
 
       const data = await res.json();
       let reply = data.content[0].text;
+      let notifications = '';
 
-      // Registrar venta
-      if (reply.includes('REGISTRAR_VENTA:')) {
-        const match = reply.match(/REGISTRAR_VENTA:(\{.*?\})/s);
-        if (match) {
-          const v = JSON.parse(match[1]);
-          await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
-          sheetData = null;
-          reply = reply.replace(/REGISTRAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta registrada en Google Sheets!';
-        }
+      // Registrar ventas
+      for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
+        await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
+        sheetData = null;
+        notifications += '\n\n✅ ¡Venta registrada en Google Sheets!';
       }
 
-      // Registrar gasto
-      if (reply.includes('REGISTRAR_GASTO:')) {
-        const match = reply.match(/REGISTRAR_GASTO:(\{.*?\})/s);
-        if (match) {
-          const g = JSON.parse(match[1]);
-          await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
-          sheetData = null;
-          reply = reply.replace(/REGISTRAR_GASTO:\{.*?\}/s, '') + '\n\n✅ ¡Gasto registrado en Google Sheets!';
-        }
+      // Registrar gastos
+      for (const g of extractAll(reply, 'REGISTRAR_GASTO')) {
+        await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
+        sheetData = null;
+        notifications += '\n\n✅ ¡Gasto registrado en Google Sheets!';
       }
 
-      // Editar venta
-      if (reply.includes('EDITAR_VENTA:')) {
-        const match = reply.match(/EDITAR_VENTA:(\{.*?\})/s);
-        if (match) {
-          const v = JSON.parse(match[1]);
-          await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
-          sheetData = null;
-          reply = reply.replace(/EDITAR_VENTA:\{.*?\}/s, '') + '\n\n✅ ¡Venta actualizada en Google Sheets!';
-        }
+      // Editar ventas
+      for (const v of extractAll(reply, 'EDITAR_VENTA')) {
+        await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
+        sheetData = null;
+        notifications += '\n\n✅ ¡Venta actualizada en Google Sheets!';
       }
 
-      // Editar gasto
-      if (reply.includes('EDITAR_GASTO:')) {
-        const match = reply.match(/EDITAR_GASTO:(\{.*?\})/s);
-        if (match) {
-          const g = JSON.parse(match[1]);
-          await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
-          sheetData = null;
-          reply = reply.replace(/EDITAR_GASTO:\{.*?\}/s, '') + '\n\n✅ ¡Gasto actualizado en Google Sheets!';
-        }
+      // Editar gastos
+      for (const g of extractAll(reply, 'EDITAR_GASTO')) {
+        await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
+        sheetData = null;
+        notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
       }
 
-      // Eliminar venta
-      if (reply.includes('ELIMINAR_VENTA:')) {
-        const match = reply.match(/ELIMINAR_VENTA:(\{.*?\})/s);
-        if (match) {
-          const v = JSON.parse(match[1]);
-          await deleteFromSheet('VENTAS', v.fila);
-          sheetData = null;
-          reply = reply.replace(/ELIMINAR_VENTA:\{.*?\}/s, '') + '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
-        }
+      // Eliminar ventas
+      for (const v of extractAll(reply, 'ELIMINAR_VENTA')) {
+        await deleteFromSheet('VENTAS', v.fila);
+        sheetData = null;
+        notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
       }
 
-      // Eliminar gasto
-      if (reply.includes('ELIMINAR_GASTO:')) {
-        const match = reply.match(/ELIMINAR_GASTO:(\{.*?\})/s);
-        if (match) {
-          const g = JSON.parse(match[1]);
-          await deleteFromSheet('GASTOS', g.fila);
-          sheetData = null;
-          reply = reply.replace(/ELIMINAR_GASTO:\{.*?\}/s, '') + '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
-        }
+      // Eliminar gastos
+      for (const g of extractAll(reply, 'ELIMINAR_GASTO')) {
+        await deleteFromSheet('GASTOS', g.fila);
+        sheetData = null;
+        notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
       }
+
+      // Limpiar los comandos JSON del reply
+      reply = reply
+        .replace(/REGISTRAR_VENTA:\{[^{}]+\}/g, '')
+        .replace(/REGISTRAR_GASTO:\{[^{}]+\}/g, '')
+        .replace(/EDITAR_VENTA:\{[^{}]+\}/g, '')
+        .replace(/EDITAR_GASTO:\{[^{}]+\}/g, '')
+        .replace(/ELIMINAR_VENTA:\{[^{}]+\}/g, '')
+        .replace(/ELIMINAR_GASTO:\{[^{}]+\}/g, '')
+        .trim() + notifications;
 
       history.push({ role: 'assistant', content: reply });
       addMessage('bot', reply);
