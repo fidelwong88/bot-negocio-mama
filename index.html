@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00e5a0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Negocio">
+<link rel="manifest" href="/manifest.json">
 <title>Bot Negocio Mamá</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -96,6 +101,11 @@
   const WORKER_URL = 'https://bot-negocio-mama.fidelwong753.workers.dev';
   let sheetData = null;
   let history = [];
+
+  // Registrar service worker para PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 
   window.addEventListener('load', () => {
     const s = localStorage.getItem('bot_sheet_id');
@@ -377,7 +387,6 @@ Usa $ y formato mexicano para dinero.`;
         notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
       }
 
-      // Reorganizar después de cualquier cambio
       if (needsReorganizeVentas) await reorganizeSheet('VENTAS');
       if (needsReorganizeGastos) await reorganizeSheet('GASTOS');
 
