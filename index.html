@@ -211,21 +211,18 @@
     return `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   }
 
-  // Detectar confirmación — muy flexible
   function esConfirmacion(text) {
     const t = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const palabras = ['si', 'yes', 'dale', 'ok', 'claro', 'anda', 'confirmo', 'adelante', 
-                      'borralos', 'eliminalos', 'procede', 'hazlo', 'venga', 'va', 
-                      'perfecto', 'correcto', 'afirmativo', 'sure', 'yep', 'porfa'];
-    return palabras.some(p => t.includes(p));
+    return ['si','yes','dale','ok','claro','anda','confirmo','adelante','borralos',
+            'eliminalos','procede','hazlo','venga','va','perfecto','correcto',
+            'afirmativo','sure','yep','porfa','orale','ándale','andale'].some(p => t.includes(p));
   }
 
-  // Detectar si es eliminación masiva (3 o más registros)
   function esMasivaEliminacion(text) {
     const t = text.toLowerCase();
-    return t.includes('todo') || t.includes('todos') || t.includes('todas') || 
-           t.includes('todo') || t.includes('limpiar') || t.includes('vaciar') ||
-           t.includes('borrar todo') || t.includes('eliminar todo');
+    return t.includes('todo') || t.includes('todos') || t.includes('todas') ||
+           t.includes('limpiar') || t.includes('vaciar') || t.includes('borrar todo') ||
+           t.includes('eliminar todo') || t.includes('quitar todo');
   }
 
   function buildContext(data) {
@@ -247,6 +244,37 @@
     return ctx || 'Sin datos aún.';
   }
 
+  // Ejecutar eliminación masiva directamente desde el código
+  async function ejecutarEliminacionMasiva(ventas, gastos) {
+    const typingId = addTyping();
+    try {
+      if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
+      let notifications = '';
+
+      if (ventas) {
+        const rows = sheetData['VENTAS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
+        for (const v of rows.sort((a,b) => b.fila - a.fila)) await deleteFromSheet('VENTAS', v.fila);
+        await reorganizeSheet('VENTAS');
+        if (rows.length > 0) notifications += `\n\n🗑️ ${rows.length} venta${rows.length > 1 ? 's' : ''} eliminada${rows.length > 1 ? 's' : ''}!`;
+      }
+
+      if (gastos) {
+        const rows = sheetData['GASTOS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
+        for (const g of rows.sort((a,b) => b.fila - a.fila)) await deleteFromSheet('GASTOS', g.fila);
+        await reorganizeSheet('GASTOS');
+        if (rows.length > 0) notifications += `\n\n🗑️ ${rows.length} gasto${rows.length > 1 ? 's' : ''} eliminado${rows.length > 1 ? 's' : ''}!`;
+      }
+
+      sheetData = null;
+      pendingDeleteAll = null;
+      removeTyping(typingId);
+      addMessage('bot', '✅ ¡Listo!' + (notifications || ' No había registros que eliminar.'));
+    } catch(e) {
+      removeTyping(typingId);
+      addMessage('bot', '❌ Error al eliminar: ' + e.message);
+    }
+  }
+
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
@@ -256,68 +284,41 @@
     input.value = '';
     input.style.height = 'auto';
 
-    // Si hay eliminación masiva pendiente y el usuario confirma
+    // Confirmar eliminación masiva pendiente
     if (pendingDeleteAll && esConfirmacion(text)) {
-      const typingId = addTyping();
-      try {
-        if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
-        let notifications = '';
-
-        if (pendingDeleteAll.ventas) {
-          const ventas = sheetData['VENTAS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
-          for (const v of ventas.sort((a,b) => b.fila - a.fila)) {
-            await deleteFromSheet('VENTAS', v.fila);
-          }
-          await reorganizeSheet('VENTAS');
-          notifications += `\n\n🗑️ ${ventas.length} ventas eliminadas!`;
-        }
-
-        if (pendingDeleteAll.gastos) {
-          const gastos = sheetData['GASTOS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
-          for (const g of gastos.sort((a,b) => b.fila - a.fila)) {
-            await deleteFromSheet('GASTOS', g.fila);
-          }
-          await reorganizeSheet('GASTOS');
-          notifications += `\n\n🗑️ ${gastos.length} gastos eliminados!`;
-        }
-
-        sheetData = null;
-        pendingDeleteAll = null;
-        removeTyping(typingId);
-        addMessage('bot', '✅ ¡Listo!' + notifications);
-        history.push({ role: 'user', content: text });
-        history.push({ role: 'assistant', content: '✅ ¡Listo!' + notifications });
-      } catch(e) {
-        removeTyping(typingId);
-        addMessage('bot', '❌ Error al eliminar: ' + e.message);
-      }
+      history.push({ role: 'user', content: text });
+      history.push({ role: 'assistant', content: '✅ ¡Listo! Eliminando registros...' });
+      await ejecutarEliminacionMasiva(pendingDeleteAll.ventas, pendingDeleteAll.gastos);
       return;
     }
 
-    // Si había eliminación pendiente pero no confirmó
-    if (pendingDeleteAll) {
-      pendingDeleteAll = null;
-    }
+    if (pendingDeleteAll) pendingDeleteAll = null;
 
-    // Detectar eliminación masiva antes de mandar al bot
+    // Detectar eliminación masiva antes de llamar al bot
     if (esMasivaEliminacion(text)) {
       if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
-      const totalVentas = sheetData['VENTAS']?.slice(1).filter(r => r[0]).length || 0;
-      const totalGastos = sheetData['GASTOS']?.slice(1).filter(r => r[0]).length || 0;
+      const t = text.toLowerCase();
+      const soloVentas = t.includes('venta') && !t.includes('gasto');
+      const soloGastos = t.includes('gasto') && !t.includes('venta');
+      const ambos = !soloVentas && !soloGastos;
+
+      const totalVentas = ambos || soloVentas ? sheetData['VENTAS']?.slice(1).filter(r => r[0]).length || 0 : 0;
+      const totalGastos = ambos || soloGastos ? sheetData['GASTOS']?.slice(1).filter(r => r[0]).length || 0 : 0;
       const total = totalVentas + totalGastos;
 
-      if (total >= 2) {
-        const t = text.toLowerCase();
-        pendingDeleteAll = {
-          ventas: !t.includes('gasto') || t.includes('todo'),
-          gastos: !t.includes('venta') || t.includes('todo')
-        };
+      if (total === 0) {
         history.push({ role: 'user', content: text });
-        const msg = `¿Confirmas? Se eliminarán ${total} registro${total > 1 ? 's' : ''} de Google Sheets. Responde con cualquier confirmación para continuar.`;
-        history.push({ role: 'assistant', content: msg });
-        addMessage('bot', msg);
+        addMessage('bot', 'No hay registros que eliminar.');
+        history.push({ role: 'assistant', content: 'No hay registros que eliminar.' });
         return;
       }
+
+      pendingDeleteAll = { ventas: ambos || soloVentas, gastos: ambos || soloGastos };
+      history.push({ role: 'user', content: text });
+      const msg = `¿Confirmas? Se eliminarán ${total} registro${total > 1 ? 's' : ''} de Google Sheets.`;
+      history.push({ role: 'assistant', content: msg });
+      addMessage('bot', msg);
+      return;
     }
 
     history.push({ role: 'user', content: text });
@@ -330,22 +331,25 @@
 
       const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos en "DATOS DEL NEGOCIO" son los datos REALES de Google Sheets. NUNCA inventes datos.
 
-REGLAS:
+REGLAS CRÍTICAS:
 - Fecha de hoy: ${hoy}. Úsala automáticamente salvo que indiquen otra.
 - El monto dado es el TOTAL FINAL. Sin calcular IVA ni subtotal.
 - NUNCA menciones subtotal ni IVA.
 - NUNCA inventes datos. Solo usa los de "DATOS DEL NEGOCIO".
-- Cada JSON en su propia línea.
+- Cada JSON en su propia línea. NUNCA uses listas.
+- NUNCA preguntes si estás seguro de eliminar algo. Si piden eliminar, incluye el JSON de eliminación DE INMEDIATO.
+- NUNCA digas que eliminaste algo sin incluir el JSON. Si no incluyes el JSON, no se elimina nada.
+- Si piden eliminar un registro específico, SIEMPRE incluye ELIMINAR_VENTA o ELIMINAR_GASTO con la fila correcta.
 
-MOSTRAR DATOS en tabla HTML con datos reales:
-Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
-Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+MOSTRAR DATOS en tabla HTML con datos reales de Google Sheets:
+Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
 ERRORES DE TIPEO: "agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra
 NOMBRES: "baner"→Grupo Baner, "jonhy/johny"→Grupo Jonhy, "aero"→Aeropuerto, "felipe"→Felipe
-SI FALTAN DATOS para registrar, pregunta qué falta.
+SI FALTAN DATOS para registrar (cliente o monto), pregunta qué falta.
 
-ACCIONES:
+ACCIONES (al final, una por línea):
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -353,7 +357,7 @@ EDITAR_GASTO:{"fila":0,"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total"
 ELIMINAR_VENTA:{"fila":0}
 ELIMINAR_GASTO:{"fila":0}
 
-DATOS DEL NEGOCIO:
+DATOS DEL NEGOCIO (directo de Google Sheets):
 ${ctx}`;
 
       const res = await fetch(`${WORKER_URL}/api/chat`, {
