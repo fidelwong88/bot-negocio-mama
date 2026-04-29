@@ -51,7 +51,7 @@
   .message.user .bubble { background: linear-gradient(135deg, #5BB8F5, #2A9AD6); border-top-right-radius: 4px; color: white; box-shadow: 0 4px 16px rgba(91,184,245,0.35); }
   .chat-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; border-radius: 10px; overflow: hidden; }
   .chat-table thead tr { background: linear-gradient(135deg, #5BB8F5, #2A9AD6); color: white; }
-  .chat-table th { padding: 10px 12px; text-align: left; font-weight: 500; font-size: 12px; letter-spacing: 0.03em; }
+  .chat-table th { padding: 10px 12px; text-align: left; font-weight: 500; font-size: 12px; }
   .chat-table tbody tr { border-bottom: 1px solid var(--border); }
   .chat-table tbody tr:last-child { border-bottom: none; }
   .chat-table tbody tr:hover { background: var(--surface2); }
@@ -110,6 +110,7 @@
   const WORKER_URL = 'https://bot-negocio-mama.fidelwong753.workers.dev';
   let sheetData = null;
   let history = [];
+  let pendingDeleteAll = null; // Para confirmar eliminación masiva
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
@@ -229,13 +230,70 @@
     return ctx || 'Sin datos aún.';
   }
 
+  // Detectar si el usuario está confirmando una eliminación masiva
+  function esConfirmacion(text) {
+    const confirmaciones = ['si', 'sí', 'yes', 'confirmo', 'adelante', 'ok', 'dale', 'borralos', 'bórralos', 'eliminalos', 'elimínalos'];
+    return confirmaciones.some(c => text.toLowerCase().trim().includes(c));
+  }
+
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
     if (!text) return;
+
     addMessage('user', text);
     input.value = '';
     input.style.height = 'auto';
+
+    // Si hay una eliminación masiva pendiente y el usuario confirma
+    if (pendingDeleteAll && esConfirmacion(text)) {
+      const typingId = addTyping();
+      try {
+        if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
+        let notifications = '';
+        let needsReorg = false;
+
+        if (pendingDeleteAll.ventas) {
+          const ventas = sheetData['VENTAS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
+          for (const v of ventas.sort((a,b) => b.fila - a.fila)) {
+            await deleteFromSheet('VENTAS', v.fila);
+            needsReorg = true;
+          }
+          notifications += `\n\n🗑️ ${ventas.length} ventas eliminadas de Google Sheets!`;
+        }
+
+        if (pendingDeleteAll.gastos) {
+          const gastos = sheetData['GASTOS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
+          for (const g of gastos.sort((a,b) => b.fila - a.fila)) {
+            await deleteFromSheet('GASTOS', g.fila);
+            needsReorg = true;
+          }
+          notifications += `\n\n🗑️ ${gastos.length} gastos eliminados de Google Sheets!`;
+        }
+
+        if (needsReorg) {
+          sheetData = null;
+          if (pendingDeleteAll.ventas) await reorganizeSheet('VENTAS');
+          if (pendingDeleteAll.gastos) await reorganizeSheet('GASTOS');
+        }
+
+        pendingDeleteAll = null;
+        removeTyping(typingId);
+        addMessage('bot', '✅ ¡Listo!' + notifications);
+        history.push({ role: 'user', content: text });
+        history.push({ role: 'assistant', content: '✅ ¡Listo!' + notifications });
+      } catch(e) {
+        removeTyping(typingId);
+        addMessage('bot', '❌ Error al eliminar: ' + e.message);
+      }
+      return;
+    }
+
+    // Si había eliminación pendiente pero no confirmó
+    if (pendingDeleteAll) {
+      pendingDeleteAll = null;
+    }
+
     history.push({ role: 'user', content: text });
     const typingId = addTyping();
 
@@ -244,26 +302,22 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `INSTRUCCIÓN CRÍTICA: Eres un asistente contable conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos que aparecen abajo en "DATOS DEL NEGOCIO" son los datos REALES y ACTUALES de Google Sheets. Cuando registras una venta o gasto, se guarda INMEDIATAMENTE en Google Sheets. JAMÁS digas que no tienes acceso a Google Sheets — eso es completamente falso. JAMÁS digas que los datos solo están en el chat. SIEMPRE actúa sabiendo que estás conectado a Google Sheets.
+      const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos en "DATOS DEL NEGOCIO" son los datos REALES de Google Sheets. NUNCA inventes datos ni digas que no tienes acceso a Sheets.
 
-Eres el asistente contable de Suheid Wong, dueña de un negocio en México que vende toners, cartuchos e insumos de impresión. Es persona física con actividad empresarial. Habla en español casual.
-
-REGLAS:
+REGLAS CRÍTICAS:
 - La fecha de hoy es ${hoy}. Úsala automáticamente salvo que indiquen otra.
-- El monto dado es el TOTAL FINAL. Regístralo exactamente.
-- PROHIBIDO mencionar subtotal ni IVA.
-- Cada JSON en línea separada. NUNCA uses listas o arreglos.
-- SIEMPRE que el usuario pida eliminar múltiples registros o "todo", PRIMERO pregunta "¿Confirmas que quieres eliminar todo?" y espera su respuesta antes de ejecutar. Solo elimina si dice "sí", "confirmo", "sí borra" o similar.
+- El monto dado es el TOTAL FINAL. Regístralo exactamente, sin calcular IVA ni subtotal.
+- NUNCA menciones subtotal ni IVA.
+- NUNCA inventes datos. Solo usa los datos de "DATOS DEL NEGOCIO".
+- Cada JSON en su propia línea. NUNCA uses listas o arreglos.
+- SIEMPRE que pidan eliminar múltiples registros o "todo", responde EXACTAMENTE: "¿Confirmas que quieres eliminar todo? Escribe 'sí' para continuar." y NO incluyas ningún JSON de eliminación todavía.
+- Solo incluye JSONs de eliminación cuando el usuario ya haya confirmado previamente.
 
-MOSTRAR DATOS SIEMPRE EN TABLA HTML:
-Cuando pidan ver ventas, gastos o resumen, usa esta estructura exacta:
+MOSTRAR DATOS — usa SOLO los datos de Google Sheets de abajo, NUNCA inventes:
+Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
-Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas con <tr><td>...</td></tr>]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
-
-Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
-
-ERRORES DE TIPEO — interpreta siempre:
-"agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra, "elimnar"=eliminar
+ERRORES DE TIPEO: "agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra
 
 NOMBRES FRECUENTES:
 "baner/baaner" → Grupo Baner
@@ -273,7 +327,7 @@ NOMBRES FRECUENTES:
 
 SI FALTAN DATOS para registrar, pregunta qué falta antes de actuar.
 
-ACCIONES (al final de tu respuesta, una por línea):
+ACCIONES (al final, una por línea):
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -299,10 +353,23 @@ ${ctx}`;
       if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Error API'); }
 
       const data = await res.json();
-      let reply = data.content?.[0]?.text || data.content?.[0]?.content || ''; if (!reply) throw new Error('Respuesta vacía del modelo');
+      let reply = data.content[0].text;
       let notifications = '';
       let needsReorganizeVentas = false;
       let needsReorganizeGastos = false;
+
+      // Detectar si el bot pide confirmación para eliminar todo
+      if (reply.includes('Confirmas que quieres eliminar todo')) {
+        // Detectar qué quiere eliminar
+        const queryLower = text.toLowerCase();
+        pendingDeleteAll = {
+          ventas: queryLower.includes('venta') || queryLower.includes('todo') || queryLower.includes('todo'),
+          gastos: queryLower.includes('gasto') || queryLower.includes('todo')
+        };
+        if (!pendingDeleteAll.ventas && !pendingDeleteAll.gastos) {
+          pendingDeleteAll = { ventas: true, gastos: true };
+        }
+      }
 
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
