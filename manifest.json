@@ -1,6 +1,6 @@
 {
-  "name": "Bot Negocio Mamá",
-  "short_name": "Negocio",
+  "name": "Consumibles Wong",
+  "short_name": "Consumibles Wong",
   "description": "Asistente de ventas, gastos y SAT",
   "start_url": "/",
   "display": "standalone",
