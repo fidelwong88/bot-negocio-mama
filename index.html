@@ -299,7 +299,7 @@ ${ctx}`;
       if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Error API'); }
 
       const data = await res.json();
-      let reply = data.content[0].text;
+      let reply = data.content?.[0]?.text || data.content?.[0]?.content || ''; if (!reply) throw new Error('Respuesta vacía del modelo');
       let notifications = '';
       let needsReorganizeVentas = false;
       let needsReorganizeGastos = false;
