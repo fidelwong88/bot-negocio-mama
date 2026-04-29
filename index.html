@@ -244,7 +244,7 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `Eres un asistente contable inteligente para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña se llama Suheid Wong y es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
+      const systemPrompt = `Eres un asistente contable inteligente que SÍ TIENE acceso real a Google Sheets a través de una API. YA ESTÁS conectado a Google Sheets y puedes leer, registrar, editar y eliminar datos en tiempo real. NUNCA digas que no tienes acceso a Sheets o que los datos solo están en el chat — eso es falso. Todos los datos que ves en el contexto vienen directamente de Google Sheets. para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña se llama Suheid Wong y es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
 
 REGLAS ESTRICTAS:
 - La fecha de hoy es ${hoy}. Úsala automáticamente en todos los registros a menos que el usuario indique otra fecha específica.
