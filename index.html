@@ -214,30 +214,34 @@
     const t = normalizar(text);
     return ['si','yes','dale','ok','claro','anda','confirmo','adelante','borralos',
             'eliminalos','procede','hazlo','venga','va','perfecto','correcto',
-            'afirmativo','sure','yep','porfa','orale','andale','sip','simón','simon'].some(p => t.includes(p));
+            'afirmativo','sure','yep','porfa','orale','andale','sip','simon'].some(p => t.includes(p));
   }
 
+  // Detección amplia de intención de eliminar
   function esEliminacion(text) {
     const t = normalizar(text);
-    return ['borra','quita','elimina','borrar','quitar','eliminar','tacha','bora',
-            'elimna','borrar','quta','tachala','ya no va','saca'].some(p => t.includes(p));
+    const palabras = ['borra','quita','elimina','borrar','quitar','eliminar','tacha',
+                      'bora','elimna','tachala','ya no va','saca','sacala','sacalo',
+                      'cancela','canclar','cancela','remueve','remover','jala','jalalo',
+                      'quitalo','borralo','eliminalo','desaparece','desaparecer'];
+    return palabras.some(p => t.includes(p));
   }
 
   function esMasiva(text) {
     const t = normalizar(text);
     return t.includes('todo') || t.includes('todos') || t.includes('todas') ||
-           t.includes('limpiar') || t.includes('vaciar');
+           t.includes('limpiar') || t.includes('vaciar') || t.includes('todas las') ||
+           t.includes('todos los');
   }
 
-  // Buscar registros que coincidan con el texto del usuario
+  // Buscar registros que coincidan con el texto
   function buscarRegistros(text) {
     const t = normalizar(text);
     const encontrados = [];
 
-    // Normalizar nombres comunes
-    const nombres = {
-      'baner': 'grupo baner', 'baaner': 'grupo baner', 'bander': 'grupo baner',
-      'jonhy': 'grupo jonhy', 'johny': 'grupo jonhy', 'jonny': 'grupo jonhy',
+    const aliasClientes = {
+      'baner': 'baner', 'baaner': 'baner', 'bander': 'baner',
+      'jonhy': 'jonhy', 'johny': 'jonhy', 'jonny': 'jonhy', 'johnny': 'jonhy',
       'aero': 'aeropuerto', 'aerp': 'aeropuerto',
       'felipe': 'felipe', 'felip': 'felipe'
     };
@@ -246,21 +250,31 @@
     if (sheetData?.['VENTAS']?.length > 1) {
       sheetData['VENTAS'].slice(1).forEach((r, i) => {
         if (!r[0]) return;
-        const cliente = normalizar(r[2]);
         const fecha = normalizar(r[0]);
-        const total = normalizar(r[3]);
+        const cliente = normalizar(r[2] || '');
+        const total = normalizar((r[3] || '').replace(/\$|,/g, ''));
 
-        // Verificar si el texto menciona este registro
         let coincide = false;
-        if (t.includes(cliente)) coincide = true;
-        // Revisar variaciones de nombres
-        for (const [alias, nombre] of Object.entries(nombres)) {
-          if (t.includes(alias) && cliente.includes(nombre.split(' ').pop())) coincide = true;
-        }
-        if (fecha && t.includes(fecha.replace(/\//g, ''))) coincide = true;
-        if (total && t.includes(total.replace('$',''))) coincide = true;
 
-        if (coincide) encontrados.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} ${r[2]} ${r[3]}` });
+        // Buscar por fecha (día del mes)
+        const partesFecha = fecha.split('/');
+        if (partesFecha.length === 3) {
+          const dia = partesFecha[0].replace(/^0/, '');
+          if (t.includes('del ' + dia) || t.includes('dia ' + dia) || t.includes(partesFecha[0])) coincide = true;
+        }
+
+        // Buscar por cliente directo
+        if (cliente && t.includes(cliente)) coincide = true;
+
+        // Buscar por alias
+        for (const [alias, base] of Object.entries(aliasClientes)) {
+          if (t.includes(alias) && cliente.includes(base)) coincide = true;
+        }
+
+        // Buscar por monto
+        if (total && t.includes(total)) coincide = true;
+
+        if (coincide) encontrados.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} — ${r[2] || ''} — ${r[3] || ''}` });
       });
     }
 
@@ -268,16 +282,24 @@
     if (sheetData?.['GASTOS']?.length > 1) {
       sheetData['GASTOS'].slice(1).forEach((r, i) => {
         if (!r[0]) return;
-        const concepto = normalizar(r[1]);
-        const proveedor = normalizar(r[2]);
         const fecha = normalizar(r[0]);
+        const concepto = normalizar(r[1] || '');
+        const proveedor = normalizar(r[2] || '');
+        const total = normalizar((r[3] || '').replace(/\$|,/g, ''));
 
         let coincide = false;
-        if (t.includes(concepto)) coincide = true;
-        if (t.includes(proveedor)) coincide = true;
-        if (fecha && t.includes(fecha.replace(/\//g, ''))) coincide = true;
 
-        if (coincide) encontrados.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} ${r[1]} ${r[3]}` });
+        const partesFecha = fecha.split('/');
+        if (partesFecha.length === 3) {
+          const dia = partesFecha[0].replace(/^0/, '');
+          if (t.includes('del ' + dia) || t.includes('dia ' + dia) || t.includes(partesFecha[0])) coincide = true;
+        }
+
+        if (concepto && t.includes(concepto)) coincide = true;
+        if (proveedor && t.includes(proveedor)) coincide = true;
+        if (total && t.includes(total)) coincide = true;
+
+        if (coincide) encontrados.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} — ${r[1] || ''} — ${r[3] || ''}` });
       });
     }
 
@@ -346,11 +368,11 @@
     }
     if (pendingDelete) pendingDelete = null;
 
-    // Detectar intención de eliminar directamente en el código
+    // Detectar intención de eliminar
     if (esEliminacion(text)) {
       if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
 
-      // Eliminación masiva
+      // Masiva
       if (esMasiva(text)) {
         const t = normalizar(text);
         const soloVentas = t.includes('venta') && !t.includes('gasto');
@@ -358,12 +380,8 @@
         const ambos = !soloVentas && !soloGastos;
 
         const registros = [];
-        if (ambos || soloVentas) {
-          sheetData['VENTAS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} ${r[2]}` }); });
-        }
-        if (ambos || soloGastos) {
-          sheetData['GASTOS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} ${r[1]}` }); });
-        }
+        if (ambos || soloVentas) sheetData['VENTAS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} ${r[2]}` }); });
+        if (ambos || soloGastos) sheetData['GASTOS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} ${r[1]}` }); });
 
         if (registros.length === 0) {
           history.push({ role: 'user', content: text });
@@ -381,29 +399,30 @@
         return;
       }
 
-      // Eliminación específica — buscar en los datos
+      // Específica — buscar en datos
       const encontrados = buscarRegistros(text);
 
-      if (encontrados.length === 0) {
-        // No encontró nada, dejar que el bot responda
-      } else if (encontrados.length === 1) {
-        // Solo uno — confirmar y eliminar
+      if (encontrados.length > 0) {
         pendingDelete = encontrados;
         history.push({ role: 'user', content: text });
-        const msg = `¿Confirmas eliminar: ${encontrados[0].desc}?`;
-        addMessage('bot', msg);
-        history.push({ role: 'assistant', content: msg });
-        return;
-      } else {
-        // Varios encontrados — mostrar lista y confirmar
-        pendingDelete = encontrados;
-        history.push({ role: 'user', content: text });
-        const lista = encontrados.map((r,i) => `${i+1}. ${r.desc}`).join('\n');
-        const msg = `Encontré ${encontrados.length} registros:\n${lista}\n\n¿Confirmas eliminar todos?`;
+        let msg;
+        if (encontrados.length === 1) {
+          msg = `¿Confirmas eliminar: ${encontrados[0].desc}?`;
+        } else {
+          const lista = encontrados.map((r,i) => `${i+1}. ${r.desc}`).join('\n');
+          msg = `Encontré ${encontrados.length} registros:\n${lista}\n\n¿Confirmas eliminar todos?`;
+        }
         addMessage('bot', msg);
         history.push({ role: 'assistant', content: msg });
         return;
       }
+
+      // No encontró nada — decirle al usuario
+      history.push({ role: 'user', content: text });
+      const msg = '¿De cuál registro? Dime el cliente, fecha o monto y lo busco.';
+      addMessage('bot', msg);
+      history.push({ role: 'assistant', content: msg });
+      return;
     }
 
     history.push({ role: 'user', content: text });
@@ -414,16 +433,16 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado a Google Sheets. Los datos en "DATOS DEL NEGOCIO" son REALES. NUNCA inventes datos.
+      const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado a Google Sheets. Los datos en "DATOS DEL NEGOCIO" son REALES. NUNCA inventes datos ni clientes ficticios.
 
 REGLAS:
 - Fecha hoy: ${hoy}. Úsala automáticamente salvo que indiquen otra.
 - El monto dado es el TOTAL FINAL. Sin calcular IVA ni subtotal.
 - NUNCA menciones subtotal ni IVA.
-- NUNCA inventes datos.
-- La eliminación de registros ya está manejada por el sistema automáticamente. NO incluyas JSONs de eliminación, el sistema ya lo hace. Solo confirma lo que el usuario pide si es registrar, editar o consultar.
+- NUNCA inventes datos ni clientes de prueba.
+- La eliminación ya está manejada por el sistema. NO intentes eliminar nada tú mismo.
 
-MOSTRAR DATOS en tabla HTML con datos reales:
+MOSTRAR DATOS en tabla HTML SOLO con datos reales de Google Sheets:
 Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
