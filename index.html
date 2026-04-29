@@ -140,7 +140,7 @@
       history = [];
       localStorage.setItem('bot_sheet_id', sheetId);
       document.getElementById('connectedBadge').style.display = 'inline';
-      addMessage('bot', '✅ ¡Conectado! ¿Qué necesitas?\n<div class="quick-btns"><span class="quick-btn" onclick="preguntar(this)">📊 Ver ventas</span><span class="quick-btn" onclick="preguntar(this)">📉 Ver gastos</span><span class="quick-btn" onclick="preguntar(this)">💰 ¿Cuánto debo al SAT?</span><span class="quick-btn" onclick="preguntar(this)">📈 Resumen del mes</span></div>');
+      addMessage('bot', '✅ ¡Conectado a Google Sheets! ¿Qué necesitas?\n<div class="quick-btns"><span class="quick-btn" onclick="preguntar(this)">📊 Ver ventas</span><span class="quick-btn" onclick="preguntar(this)">📉 Ver gastos</span><span class="quick-btn" onclick="preguntar(this)">💰 ¿Cuánto debo al SAT?</span><span class="quick-btn" onclick="preguntar(this)">📈 Resumen del mes</span></div>');
     } catch(e) {
       addMessage('bot', '❌ Error conectando. Verifica tu conexión e intenta de nuevo.');
     }
@@ -244,50 +244,36 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `Eres un asistente contable inteligente que SÍ TIENE acceso real a Google Sheets a través de una API. YA ESTÁS conectado a Google Sheets y puedes leer, registrar, editar y eliminar datos en tiempo real. NUNCA digas que no tienes acceso a Sheets o que los datos solo están en el chat — eso es falso. Todos los datos que ves en el contexto vienen directamente de Google Sheets. para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña se llama Suheid Wong y es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
+      const systemPrompt = `INSTRUCCIÓN CRÍTICA: Eres un asistente contable conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos que aparecen abajo en "DATOS DEL NEGOCIO" son los datos REALES y ACTUALES de Google Sheets. Cuando registras una venta o gasto, se guarda INMEDIATAMENTE en Google Sheets. JAMÁS digas que no tienes acceso a Google Sheets — eso es completamente falso. JAMÁS digas que los datos solo están en el chat. SIEMPRE actúa sabiendo que estás conectado a Google Sheets.
 
-REGLAS ESTRICTAS:
-- La fecha de hoy es ${hoy}. Úsala automáticamente en todos los registros a menos que el usuario indique otra fecha específica.
-- El monto que da el usuario es el TOTAL FINAL. Regístralo exactamente como lo dio.
-- PROHIBIDO calcular, mostrar o mencionar subtotal ni IVA en el chat.
-- NUNCA pierdas el contexto de la conversación.
-- Siempre tienes acceso a TODOS los datos aunque sean de hace mucho tiempo.
-- Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
-- Cuando elimines múltiples registros, ponlos de mayor a menor número de fila.
+Eres el asistente contable de Suheid Wong, dueña de un negocio en México que vende toners, cartuchos e insumos de impresión. Es persona física con actividad empresarial. Habla en español casual.
 
-MOSTRAR TABLAS — MUY IMPORTANTE:
-Cuando el usuario pida ver ventas, gastos, resumen o cualquier lista, SIEMPRE usa esta estructura HTML exacta:
+REGLAS:
+- La fecha de hoy es ${hoy}. Úsala automáticamente salvo que indiquen otra.
+- El monto dado es el TOTAL FINAL. Regístralo exactamente.
+- PROHIBIDO mencionar subtotal ni IVA.
+- Cada JSON en línea separada. NUNCA uses listas o arreglos.
+- Al eliminar múltiples, de mayor a menor fila.
 
-Para ventas:
-<table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+MOSTRAR DATOS SIEMPRE EN TABLA HTML:
+Cuando pidan ver ventas, gastos o resumen, usa esta estructura exacta:
 
-Para gastos:
-<table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas con <tr><td>...</td></tr>]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
-Para resumen SAT:
-<table class="chat-table"><thead><tr><th>Mes</th><th>Ingresos</th><th>Gastos</th><th>IVA a Pagar</th><th>ISR</th></tr></thead><tbody>[filas]</tbody></table>
+Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
-Siempre incluye el total sumado al final. Usa formato $X.XX para dinero.
-
-MANEJO DE ERRORES Y AMBIGÜEDAD:
-- Entiende errores de tipeo: "agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra
-- Si faltan datos para registrar (cliente o monto), pregunta qué falta antes de actuar
-- Si no entiendes el mensaje, di qué no entendiste y pide que lo repita
-- NUNCA asumas datos que no te dieron
-
-INTERPRETA EL LENGUAJE NATURAL:
-REGISTRAR: "agrega","anota","registra","mete","pon","vendí","gasté","pagué","compré"
-ELIMINAR: "borra","quita","elimina","táchala","ya no va","borra todo","elimina todo"
-EDITAR: "cambia","modifica","corrige","en realidad era","estaba mal"
-CONSULTAR/VER: "muéstrame","ver","lista","cuánto","resumen","qué vendí","mis ventas" → mostrar tabla HTML
+ERRORES DE TIPEO — interpreta siempre:
+"agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra, "elimnar"=eliminar
 
 NOMBRES FRECUENTES:
-- "baner","baaner","bander" → Grupo Baner
-- "jonhy","johny","jonny","johnny" → Grupo Jonhy
-- "aero","aerp","aeropuerto" → Aeropuerto
-- "felipe","felip" → Felipe
+"baner/baaner" → Grupo Baner
+"jonhy/johny/jonny" → Grupo Jonhy
+"aero/aerp" → Aeropuerto
+"felipe/felip" → Felipe
 
-ACCIONES JSON al final de tu respuesta:
+SI FALTAN DATOS para registrar, pregunta qué falta antes de actuar.
+
+ACCIONES (al final de tu respuesta, una por línea):
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -295,15 +281,18 @@ EDITAR_GASTO:{"fila":0,"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total"
 ELIMINAR_VENTA:{"fila":0}
 ELIMINAR_GASTO:{"fila":0}
 
-DATOS DEL NEGOCIO:
-${ctx}
-
-Usa $ y formato mexicano para dinero.`;
+DATOS DEL NEGOCIO (directo de Google Sheets):
+${ctx}`;
 
       const res = await fetch(`${WORKER_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, system: systemPrompt, messages: history })
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          system: systemPrompt,
+          messages: history
+        })
       });
 
       removeTyping(typingId);
@@ -318,34 +307,34 @@ Usa $ y formato mexicano para dinero.`;
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
         sheetData = null; needsReorganizeVentas = true;
-        notifications += '\n\n✅ ¡Venta registrada!';
+        notifications += '\n\n✅ ¡Venta registrada en Google Sheets!';
       }
       for (const g of extractAll(reply, 'REGISTRAR_GASTO')) {
         await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
         sheetData = null; needsReorganizeGastos = true;
-        notifications += '\n\n✅ ¡Gasto registrado!';
+        notifications += '\n\n✅ ¡Gasto registrado en Google Sheets!';
       }
       for (const v of extractAll(reply, 'EDITAR_VENTA')) {
         await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
         sheetData = null; needsReorganizeVentas = true;
-        notifications += '\n\n✅ ¡Venta actualizada!';
+        notifications += '\n\n✅ ¡Venta actualizada en Google Sheets!';
       }
       for (const g of extractAll(reply, 'EDITAR_GASTO')) {
         await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
         sheetData = null; needsReorganizeGastos = true;
-        notifications += '\n\n✅ ¡Gasto actualizado!';
+        notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
       }
       const ventasEliminar = extractAll(reply, 'ELIMINAR_VENTA').sort((a, b) => b.fila - a.fila);
       for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
         sheetData = null; needsReorganizeVentas = true;
-        notifications += '\n\n🗑️ ¡Venta eliminada!';
+        notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
       }
       const gastosEliminar = extractAll(reply, 'ELIMINAR_GASTO').sort((a, b) => b.fila - a.fila);
       for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
         sheetData = null; needsReorganizeGastos = true;
-        notifications += '\n\n🗑️ ¡Gasto eliminado!';
+        notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
       }
 
       if (needsReorganizeVentas) await reorganizeSheet('VENTAS');
