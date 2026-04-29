@@ -234,7 +234,7 @@
       if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
       const ctx = buildContext(sheetData);
 
-      const systemPrompt = `Eres un asistente contable para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual.
+      const systemPrompt = `Eres un asistente contable inteligente para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
 
 REGLAS ESTRICTAS:
 - El monto que da el usuario es el TOTAL FINAL. Regístralo exactamente como lo dio.
@@ -242,10 +242,29 @@ REGLAS ESTRICTAS:
 - Solo confirma: cliente, total exacto y fecha. Nada más.
 - NUNCA pierdas el contexto de la conversación.
 - Siempre tienes acceso a TODOS los datos aunque sean de hace mucho tiempo.
-- IMPORTANTE: Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
+- Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
 - Cuando elimines múltiples registros, ponlos de mayor a menor número de fila.
 
-ACCIONES DISPONIBLES — pon cada JSON en su propia línea al final de tu respuesta:
+INTERPRETA EL LENGUAJE NATURAL — estos son ejemplos de lo que el usuario puede decir y cómo debes interpretarlo:
+
+REGISTRAR:
+- "agrega", "anota", "registra", "mete", "pon", "añade" → registrar
+- "vendí", "le vendí", "venta de" → REGISTRAR_VENTA
+- "compré", "gasté", "pagué", "gasto de" → REGISTRAR_GASTO
+
+ELIMINAR:
+- "borra", "quita", "elimina", "bórra", "quítame", "táchala", "ya no va" → eliminar
+- "borra todo", "elimina todo", "quita todo", "bórralas todas" → eliminar TODOS los registros que existan
+- "borra la de Felipe", "quita la venta de Grupo Baner" → eliminar ese registro específico
+
+EDITAR:
+- "cambia", "modifica", "corrige", "actualiza", "era", "el precio estaba mal" → editar
+- "cámbialo a", "en realidad era", "corrígelo" → editar ese registro
+
+CONSULTAR:
+- "cuánto", "qué vendí", "mis ventas", "resumen", "cuánto debo" → solo responder sin JSON
+
+ACCIONES — pon cada JSON en su propia línea al final de tu respuesta:
 
 Registrar venta:
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -253,7 +272,7 @@ REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 Registrar gasto:
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 
-Editar venta (usa el número de fila que aparece en los datos):
+Editar venta:
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 
 Editar gasto:
@@ -292,35 +311,30 @@ Usa $ y formato mexicano para dinero.`;
       let reply = data.content[0].text;
       let notifications = '';
 
-      // Registrar ventas
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
         sheetData = null;
         notifications += '\n\n✅ ¡Venta registrada en Google Sheets!';
       }
 
-      // Registrar gastos
       for (const g of extractAll(reply, 'REGISTRAR_GASTO')) {
         await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
         sheetData = null;
         notifications += '\n\n✅ ¡Gasto registrado en Google Sheets!';
       }
 
-      // Editar ventas
       for (const v of extractAll(reply, 'EDITAR_VENTA')) {
         await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
         sheetData = null;
         notifications += '\n\n✅ ¡Venta actualizada en Google Sheets!';
       }
 
-      // Editar gastos
       for (const g of extractAll(reply, 'EDITAR_GASTO')) {
         await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
         sheetData = null;
         notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
       }
 
-      // Eliminar ventas — de mayor a menor fila para no desplazar filas
       const ventasEliminar = extractAll(reply, 'ELIMINAR_VENTA').sort((a, b) => b.fila - a.fila);
       for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
@@ -328,7 +342,6 @@ Usa $ y formato mexicano para dinero.`;
         notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
       }
 
-      // Eliminar gastos — de mayor a menor fila
       const gastosEliminar = extractAll(reply, 'ELIMINAR_GASTO').sort((a, b) => b.fila - a.fila);
       for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
@@ -336,7 +349,6 @@ Usa $ y formato mexicano para dinero.`;
         notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
       }
 
-      // Limpiar los comandos JSON del reply
       reply = reply
         .replace(/REGISTRAR_VENTA:\{[^{}]+\}/g, '')
         .replace(/REGISTRAR_GASTO:\{[^{}]+\}/g, '')
