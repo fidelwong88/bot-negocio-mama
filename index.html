@@ -110,7 +110,7 @@
   const WORKER_URL = 'https://bot-negocio-mama.fidelwong753.workers.dev';
   let sheetData = null;
   let history = [];
-  let pendingDeleteAll = null; // Para confirmar eliminación masiva
+  let pendingDeleteAll = null;
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 
@@ -211,6 +211,23 @@
     return `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   }
 
+  // Detectar confirmación — muy flexible
+  function esConfirmacion(text) {
+    const t = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const palabras = ['si', 'yes', 'dale', 'ok', 'claro', 'anda', 'confirmo', 'adelante', 
+                      'borralos', 'eliminalos', 'procede', 'hazlo', 'venga', 'va', 
+                      'perfecto', 'correcto', 'afirmativo', 'sure', 'yep', 'porfa'];
+    return palabras.some(p => t.includes(p));
+  }
+
+  // Detectar si es eliminación masiva (3 o más registros)
+  function esMasivaEliminacion(text) {
+    const t = text.toLowerCase();
+    return t.includes('todo') || t.includes('todos') || t.includes('todas') || 
+           t.includes('todo') || t.includes('limpiar') || t.includes('vaciar') ||
+           t.includes('borrar todo') || t.includes('eliminar todo');
+  }
+
   function buildContext(data) {
     let ctx = '';
     if (data['VENTAS']?.length > 1) {
@@ -230,12 +247,6 @@
     return ctx || 'Sin datos aún.';
   }
 
-  // Detectar si el usuario está confirmando una eliminación masiva
-  function esConfirmacion(text) {
-    const confirmaciones = ['si', 'sí', 'yes', 'confirmo', 'adelante', 'ok', 'dale', 'borralos', 'bórralos', 'eliminalos', 'elimínalos'];
-    return confirmaciones.some(c => text.toLowerCase().trim().includes(c));
-  }
-
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
@@ -245,38 +256,32 @@
     input.value = '';
     input.style.height = 'auto';
 
-    // Si hay una eliminación masiva pendiente y el usuario confirma
+    // Si hay eliminación masiva pendiente y el usuario confirma
     if (pendingDeleteAll && esConfirmacion(text)) {
       const typingId = addTyping();
       try {
         if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
         let notifications = '';
-        let needsReorg = false;
 
         if (pendingDeleteAll.ventas) {
           const ventas = sheetData['VENTAS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
           for (const v of ventas.sort((a,b) => b.fila - a.fila)) {
             await deleteFromSheet('VENTAS', v.fila);
-            needsReorg = true;
           }
-          notifications += `\n\n🗑️ ${ventas.length} ventas eliminadas de Google Sheets!`;
+          await reorganizeSheet('VENTAS');
+          notifications += `\n\n🗑️ ${ventas.length} ventas eliminadas!`;
         }
 
         if (pendingDeleteAll.gastos) {
           const gastos = sheetData['GASTOS']?.slice(1).map((r, i) => ({ fila: i+2, data: r })).filter(r => r.data[0]) || [];
           for (const g of gastos.sort((a,b) => b.fila - a.fila)) {
             await deleteFromSheet('GASTOS', g.fila);
-            needsReorg = true;
           }
-          notifications += `\n\n🗑️ ${gastos.length} gastos eliminados de Google Sheets!`;
+          await reorganizeSheet('GASTOS');
+          notifications += `\n\n🗑️ ${gastos.length} gastos eliminados!`;
         }
 
-        if (needsReorg) {
-          sheetData = null;
-          if (pendingDeleteAll.ventas) await reorganizeSheet('VENTAS');
-          if (pendingDeleteAll.gastos) await reorganizeSheet('GASTOS');
-        }
-
+        sheetData = null;
         pendingDeleteAll = null;
         removeTyping(typingId);
         addMessage('bot', '✅ ¡Listo!' + notifications);
@@ -294,6 +299,27 @@
       pendingDeleteAll = null;
     }
 
+    // Detectar eliminación masiva antes de mandar al bot
+    if (esMasivaEliminacion(text)) {
+      if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
+      const totalVentas = sheetData['VENTAS']?.slice(1).filter(r => r[0]).length || 0;
+      const totalGastos = sheetData['GASTOS']?.slice(1).filter(r => r[0]).length || 0;
+      const total = totalVentas + totalGastos;
+
+      if (total >= 2) {
+        const t = text.toLowerCase();
+        pendingDeleteAll = {
+          ventas: !t.includes('gasto') || t.includes('todo'),
+          gastos: !t.includes('venta') || t.includes('todo')
+        };
+        history.push({ role: 'user', content: text });
+        const msg = `¿Confirmas? Se eliminarán ${total} registro${total > 1 ? 's' : ''} de Google Sheets. Responde con cualquier confirmación para continuar.`;
+        history.push({ role: 'assistant', content: msg });
+        addMessage('bot', msg);
+        return;
+      }
+    }
+
     history.push({ role: 'user', content: text });
     const typingId = addTyping();
 
@@ -302,32 +328,24 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos en "DATOS DEL NEGOCIO" son los datos REALES de Google Sheets. NUNCA inventes datos ni digas que no tienes acceso a Sheets.
+      const systemPrompt = `Eres el asistente contable de Suheid Wong, conectado DIRECTAMENTE a Google Sheets en tiempo real. Los datos en "DATOS DEL NEGOCIO" son los datos REALES de Google Sheets. NUNCA inventes datos.
 
-REGLAS CRÍTICAS:
-- La fecha de hoy es ${hoy}. Úsala automáticamente salvo que indiquen otra.
-- El monto dado es el TOTAL FINAL. Regístralo exactamente, sin calcular IVA ni subtotal.
+REGLAS:
+- Fecha de hoy: ${hoy}. Úsala automáticamente salvo que indiquen otra.
+- El monto dado es el TOTAL FINAL. Sin calcular IVA ni subtotal.
 - NUNCA menciones subtotal ni IVA.
-- NUNCA inventes datos. Solo usa los datos de "DATOS DEL NEGOCIO".
-- Cada JSON en su propia línea. NUNCA uses listas o arreglos.
-- SIEMPRE que pidan eliminar múltiples registros o "todo", responde EXACTAMENTE: "¿Confirmas que quieres eliminar todo? Escribe 'sí' para continuar." y NO incluyas ningún JSON de eliminación todavía.
-- Solo incluye JSONs de eliminación cuando el usuario ya haya confirmado previamente.
+- NUNCA inventes datos. Solo usa los de "DATOS DEL NEGOCIO".
+- Cada JSON en su propia línea.
 
-MOSTRAR DATOS — usa SOLO los datos de Google Sheets de abajo, NUNCA inventes:
-Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
-Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas reales]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+MOSTRAR DATOS en tabla HTML con datos reales:
+Ventas: <table class="chat-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="2">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
+Gastos: <table class="chat-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Proveedor</th><th>Total</th></tr></thead><tbody>[filas]</tbody><tfoot><tr><td colspan="3">TOTAL</td><td>$X.XX</td></tr></tfoot></table>
 
 ERRORES DE TIPEO: "agegra"=agrega, "benta"=venta, "pague"=pagué, "bora"=borra
+NOMBRES: "baner"→Grupo Baner, "jonhy/johny"→Grupo Jonhy, "aero"→Aeropuerto, "felipe"→Felipe
+SI FALTAN DATOS para registrar, pregunta qué falta.
 
-NOMBRES FRECUENTES:
-"baner/baaner" → Grupo Baner
-"jonhy/johny/jonny" → Grupo Jonhy
-"aero/aerp" → Aeropuerto
-"felipe/felip" → Felipe
-
-SI FALTAN DATOS para registrar, pregunta qué falta antes de actuar.
-
-ACCIONES (al final, una por línea):
+ACCIONES:
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -335,18 +353,13 @@ EDITAR_GASTO:{"fila":0,"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total"
 ELIMINAR_VENTA:{"fila":0}
 ELIMINAR_GASTO:{"fila":0}
 
-DATOS DEL NEGOCIO (directo de Google Sheets):
+DATOS DEL NEGOCIO:
 ${ctx}`;
 
       const res = await fetch(`${WORKER_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1500,
-          system: systemPrompt,
-          messages: history
-        })
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1500, system: systemPrompt, messages: history })
       });
 
       removeTyping(typingId);
@@ -357,19 +370,6 @@ ${ctx}`;
       let notifications = '';
       let needsReorganizeVentas = false;
       let needsReorganizeGastos = false;
-
-      // Detectar si el bot pide confirmación para eliminar todo
-      if (reply.includes('Confirmas que quieres eliminar todo')) {
-        // Detectar qué quiere eliminar
-        const queryLower = text.toLowerCase();
-        pendingDeleteAll = {
-          ventas: queryLower.includes('venta') || queryLower.includes('todo') || queryLower.includes('todo'),
-          gastos: queryLower.includes('gasto') || queryLower.includes('todo')
-        };
-        if (!pendingDeleteAll.ventas && !pendingDeleteAll.gastos) {
-          pendingDeleteAll = { ventas: true, gastos: true };
-        }
-      }
 
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
@@ -395,13 +395,13 @@ ${ctx}`;
       for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
         sheetData = null; needsReorganizeVentas = true;
-        notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
+        notifications += '\n\n🗑️ ¡Venta eliminada!';
       }
       const gastosEliminar = extractAll(reply, 'ELIMINAR_GASTO').sort((a, b) => b.fila - a.fila);
       for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
         sheetData = null; needsReorganizeGastos = true;
-        notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
+        notifications += '\n\n🗑️ ¡Gasto eliminado!';
       }
 
       if (needsReorganizeVentas) await reorganizeSheet('VENTAS');
