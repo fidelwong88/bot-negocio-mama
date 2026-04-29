@@ -78,13 +78,7 @@
     <div class="avatar">🤖</div>
     <div class="bubble">
       ¡Hola! Soy el asistente del negocio de tu mamá. 👋<br><br>
-      Haz clic en <strong>Conectar</strong> para empezar.
-      <div class="quick-btns">
-        <span class="quick-btn" onclick="preguntar(this)">📊 Ver resumen del mes</span>
-        <span class="quick-btn" onclick="preguntar(this)">💰 ¿Cuánto debo al SAT?</span>
-        <span class="quick-btn" onclick="preguntar(this)">📈 Ventas por mes</span>
-        <span class="quick-btn" onclick="preguntar(this)">📉 Gastos totales</span>
-      </div>
+      Conectando con Google Sheets...
     </div>
   </div>
 </div>
@@ -102,7 +96,6 @@
   let sheetData = null;
   let history = [];
 
-  // Registrar service worker para PWA
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
@@ -110,6 +103,7 @@
   window.addEventListener('load', () => {
     const s = localStorage.getItem('bot_sheet_id');
     if (s) document.getElementById('sheetId').value = s;
+    conectar();
   });
 
   function preguntar(el) {
@@ -128,15 +122,14 @@
 
   async function conectar() {
     const sheetId = document.getElementById('sheetId').value.trim();
-    addMessage('bot', '🔄 Conectando con Google Sheets...');
     try {
       sheetData = await fetchSheets(sheetId);
       history = [];
       localStorage.setItem('bot_sheet_id', sheetId);
       document.getElementById('connectedBadge').style.display = 'inline';
-      addMessage('bot', '✅ ¡Conectado! Puedo leer y escribir en tus hojas. ¿Qué necesitas?');
+      addMessage('bot', '✅ ¡Conectado! ¿Qué necesitas?\n<div class="quick-btns"><span class="quick-btn" onclick="preguntar(this)">📊 Ver resumen del mes</span><span class="quick-btn" onclick="preguntar(this)">💰 ¿Cuánto debo al SAT?</span><span class="quick-btn" onclick="preguntar(this)">📈 Ventas por mes</span><span class="quick-btn" onclick="preguntar(this)">📉 Gastos totales</span></div>');
     } catch(e) {
-      addMessage('bot', '❌ Error conectando: ' + e.message);
+      addMessage('bot', '❌ Error conectando. Verifica tu conexión e intenta de nuevo.');
     }
   }
 
