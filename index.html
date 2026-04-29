@@ -37,7 +37,6 @@
     position: relative;
   }
 
-  /* Decoración de fondo */
   body::before {
     content: '';
     position: fixed;
@@ -63,7 +62,6 @@
     z-index: 0;
   }
 
-  /* Círculos decorativos */
   .deco {
     position: fixed;
     pointer-events: none;
@@ -536,7 +534,7 @@
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
 
-      const systemPrompt = `Eres un asistente contable inteligente para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
+      const systemPrompt = `Eres un asistente contable inteligente para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña se llama Suheid Wong y es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
 
 REGLAS ESTRICTAS:
 - La fecha de hoy es ${hoy}. Úsala automáticamente en todos los registros a menos que el usuario indique otra fecha específica.
@@ -548,25 +546,39 @@ REGLAS ESTRICTAS:
 - Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
 - Cuando elimines múltiples registros, ponlos de mayor a menor número de fila.
 
-INTERPRETA EL LENGUAJE NATURAL:
+MANEJO DE ERRORES Y AMBIGÜEDAD — MUY IMPORTANTE:
+- El usuario puede escribir con faltas de ortografía, errores de tipeo o palabras incompletas. Intenta entender el significado real aunque esté mal escrito. Ejemplos: "agegra" = "agrega", "venta" = "venta", "borrar" = "eliminar", "jonhy" = "Jonhy", "baner" = "Baner".
+- Si el mensaje es ambiguo o te faltan datos para completar la acción (cliente, monto, fecha diferente, concepto), pregunta específicamente lo que necesitas antes de registrar. Ejemplo: si dice "agrega una venta" sin monto ni cliente, pregunta "¿A qué cliente y por cuánto?".
+- Si no entiendes el mensaje, di exactamente qué no entendiste y pide que lo repita de otra forma.
+- NUNCA asumas datos que no te dieron. Si falta información importante, pregunta.
+- Si el usuario confirma algo que ya hiciste, no lo repitas. Si dice "sí" o "correcto", solo confirma que quedó bien.
+- Si el usuario corrige algo, actualiza sin problema y confirma el cambio.
+
+INTERPRETA EL LENGUAJE NATURAL Y ERRORES COMUNES:
 
 REGISTRAR:
-- "agrega", "anota", "registra", "mete", "pon", "añade" → registrar
-- "vendí", "le vendí", "venta de" → REGISTRAR_VENTA
-- "compré", "gasté", "pagué", "gasto de" → REGISTRAR_GASTO
+- "agrega", "anota", "registra", "mete", "pon", "añade", "agegra", "registar", "anega" → registrar
+- "vendí", "le vendí", "venta de", "vendi", "benta" → REGISTRAR_VENTA
+- "compré", "gasté", "pagué", "gasto de", "gaste", "pague", "compre" → REGISTRAR_GASTO
 
 ELIMINAR:
-- "borra", "quita", "elimina", "bórra", "quítame", "táchala", "ya no va" → eliminar
-- "borra todo", "elimina todo", "quita todo" → eliminar TODOS los registros
-- "borra la de Felipe", "quita la venta de Grupo Baner" → eliminar ese registro
+- "borra", "quita", "elimina", "bórra", "quítame", "táchala", "ya no va", "bora", "eliminar", "quitar" → eliminar
+- "borra todo", "elimina todo", "quita todo", "bórralas todas", "borra todas" → eliminar TODOS
+- "borra la de Felipe", "quita la de Baner" → eliminar ese registro específico
 
 EDITAR:
-- "cambia", "modifica", "corrige", "actualiza", "cámbialo a", "en realidad era" → editar
+- "cambia", "modifica", "corrige", "actualiza", "cámbialo", "en realidad era", "estaba mal", "cambia" → editar
 
 CONSULTAR:
-- "cuánto", "qué vendí", "mis ventas", "resumen", "cuánto debo" → solo responder sin JSON
+- "cuánto", "qué vendí", "mis ventas", "resumen", "cuánto debo", "cuanto", "que vendi" → solo responder sin JSON
 
-ACCIONES:
+NOMBRES DE CLIENTES FRECUENTES (interpreta variaciones):
+- "baner", "baaner", "bander" → Grupo Baner
+- "jonhy", "johny", "jonny", "johnny" → Grupo Jonhy
+- "aero", "aeropuerto", "aerp" → Aeropuerto
+- "felipe", "felip", "feliipe" → Felipe
+
+ACCIONES — pon cada JSON en su propia línea al final de tu respuesta:
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
