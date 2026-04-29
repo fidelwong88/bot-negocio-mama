@@ -195,6 +195,14 @@
     return results;
   }
 
+  function getFechaHoy() {
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, '0');
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const anio = now.getFullYear();
+    return `${dia}/${mes}/${anio}`;
+  }
+
   function buildContext(data) {
     let ctx = '';
     if (data['VENTAS']?.length > 1) {
@@ -233,10 +241,12 @@
     try {
       if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
       const ctx = buildContext(sheetData);
+      const hoy = getFechaHoy();
 
       const systemPrompt = `Eres un asistente contable inteligente para un negocio en México que vende toners, cartuchos e insumos de impresión. La dueña es persona física con actividad empresarial. Habla en español casual y entiende lenguaje informal.
 
 REGLAS ESTRICTAS:
+- La fecha de hoy es ${hoy}. Úsala automáticamente en todos los registros a menos que el usuario indique otra fecha específica.
 - El monto que da el usuario es el TOTAL FINAL. Regístralo exactamente como lo dio.
 - PROHIBIDO calcular, mostrar o mencionar subtotal ni IVA en el chat.
 - Solo confirma: cliente, total exacto y fecha. Nada más.
