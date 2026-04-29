@@ -185,7 +185,6 @@
     return await res.json();
   }
 
-  // Extrae todos los JSONs de un comando en el reply
   function extractAll(reply, comando) {
     const regex = new RegExp(comando + ':(\\{[^{}]+\\})', 'g');
     const results = [];
@@ -244,6 +243,7 @@ REGLAS ESTRICTAS:
 - NUNCA pierdas el contexto de la conversación.
 - Siempre tienes acceso a TODOS los datos aunque sean de hace mucho tiempo.
 - IMPORTANTE: Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
+- Cuando elimines múltiples registros, ponlos de mayor a menor número de fila.
 
 ACCIONES DISPONIBLES — pon cada JSON en su propia línea al final de tu respuesta:
 
@@ -320,15 +320,17 @@ Usa $ y formato mexicano para dinero.`;
         notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
       }
 
-      // Eliminar ventas
-      for (const v of extractAll(reply, 'ELIMINAR_VENTA')) {
+      // Eliminar ventas — de mayor a menor fila para no desplazar filas
+      const ventasEliminar = extractAll(reply, 'ELIMINAR_VENTA').sort((a, b) => b.fila - a.fila);
+      for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
         sheetData = null;
         notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
       }
 
-      // Eliminar gastos
-      for (const g of extractAll(reply, 'ELIMINAR_GASTO')) {
+      // Eliminar gastos — de mayor a menor fila
+      const gastosEliminar = extractAll(reply, 'ELIMINAR_GASTO').sort((a, b) => b.fila - a.fila);
+      for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
         sheetData = null;
         notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
