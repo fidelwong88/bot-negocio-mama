@@ -3,85 +3,364 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#00e5a0">
+<meta name="theme-color" content="#5BB8F5">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Negocio">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Consumibles Wong">
 <link rel="manifest" href="/manifest.json">
-<title>Bot Negocio Mamá</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>Suheid Wong</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
   :root {
-    --bg: #0f0f0f; --surface: #1a1a1a; --surface2: #242424;
-    --border: #2e2e2e; --accent: #00e5a0; --accent2: #00b37d;
-    --text: #f0f0f0; --muted: #888; --user-bubble: #1e3a2f; --bot-bubble: #1a1a1a;
+    --bg: #EAF5FF;
+    --surface: #ffffff;
+    --surface2: #D6EEFA;
+    --border: #B8DDF5;
+    --accent: #5BB8F5;
+    --accent2: #2A9AD6;
+    --text: #1A3A52;
+    --muted: #6B9AB8;
+    --user-bubble: #5BB8F5;
+    --bot-bubble: #ffffff;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-  header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--surface); }
-  .logo { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .header-info h1 { font-size: 15px; font-weight: 600; }
-  .header-info p { font-size: 12px; color: var(--muted); }
-  .status-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin-left: auto; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .config-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 10px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .config-bar label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; }
-  .config-bar input { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; width: 240px; outline: none; }
-  .config-bar input:focus { border-color: var(--accent); }
-  .config-bar button { background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .connected-badge { font-size: 11px; color: var(--accent); font-family: 'DM Mono', monospace; display: none; }
-  .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-  .message { display: flex; gap: 10px; max-width: 80%; animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Decoración de fondo */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(91,184,245,0.15) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -150px;
+    left: -150px;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(91,184,245,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Círculos decorativos */
+  .deco {
+    position: fixed;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(91,184,245,0.2);
+  }
+  .deco-1 { width: 300px; height: 300px; top: 10%; right: 5%; }
+  .deco-2 { width: 200px; height: 200px; top: 15%; right: 10%; }
+  .deco-3 { width: 150px; height: 150px; bottom: 20%; left: 3%; }
+
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 2px 20px rgba(91,184,245,0.1);
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #5BB8F5, #2A9AD6);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 4px 12px rgba(91,184,245,0.3);
+  }
+
+  .header-info h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .header-info p {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: #5BB8F5;
+    border-radius: 50%;
+    margin-left: auto;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px rgba(91,184,245,0.5);
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
+
+  .config-bar {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 10;
+  }
+
+  .config-bar label {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .config-bar input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    width: 240px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .config-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,184,245,0.15); }
+
+  .config-bar button {
+    background: linear-gradient(135deg, #5BB8F5, #2A9AD6);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(91,184,245,0.3);
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .config-bar button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(91,184,245,0.4); }
+
+  .connected-badge {
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: 'DM Mono', monospace;
+    display: none;
+    font-weight: 500;
+  }
+
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .message {
+    display: flex;
+    gap: 10px;
+    max-width: 82%;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
   .message.user { align-self: flex-end; flex-direction: row-reverse; }
-  .avatar { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-  .message.bot .avatar { background: var(--accent); }
-  .message.user .avatar { background: var(--surface2); border: 1px solid var(--border); }
-  .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6; }
-  .message.bot .bubble { background: var(--bot-bubble); border: 1px solid var(--border); border-top-left-radius: 4px; }
-  .message.user .bubble { background: var(--user-bubble); border: 1px solid #1e5c42; border-top-right-radius: 4px; color: #b8f0d8; }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .message.bot .avatar {
+    background: linear-gradient(135deg, #5BB8F5, #2A9AD6);
+    box-shadow: 0 2px 8px rgba(91,184,245,0.3);
+  }
+  .message.user .avatar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .message.bot .bubble {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+    color: var(--text);
+    box-shadow: 0 2px 12px rgba(91,184,245,0.08);
+  }
+
+  .message.user .bubble {
+    background: linear-gradient(135deg, #5BB8F5, #2A9AD6);
+    border-top-right-radius: 4px;
+    color: white;
+    box-shadow: 0 4px 16px rgba(91,184,245,0.35);
+  }
+
   .bubble table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-  .bubble th { background: var(--surface2); padding: 8px 12px; text-align: left; color: var(--accent); font-size: 11px; border-bottom: 1px solid var(--border); }
+  .bubble th { background: var(--surface2); padding: 8px 12px; text-align: left; color: var(--accent2); font-size: 11px; border-bottom: 1px solid var(--border); }
   .bubble td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+
   .quick-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-  .quick-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-  .quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .quick-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .quick-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
   .typing { display: flex; gap: 4px; align-items: center; padding: 14px 16px; }
-  .typing span { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s infinite; }
-  .typing span:nth-child(2){animation-delay:0.2s} .typing span:nth-child(3){animation-delay:0.4s}
-  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-  .input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 10px; align-items: flex-end; }
-  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 10px; font-size: 14px; font-family: 'DM Sans', sans-serif; resize: none; outline: none; line-height: 1.5; max-height: 120px; }
-  textarea:focus { border-color: var(--accent); }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2){animation-delay:0.2s}
+  .typing span:nth-child(3){animation-delay:0.4s}
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+  .input-area {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 -2px 20px rgba(91,184,245,0.08);
+  }
+
+  textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    max-height: 120px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,184,245,0.15); }
   textarea::placeholder { color: var(--muted); }
-  .send-btn { background: var(--accent); border: none; color: #000; width: 42px; height: 42px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .send-btn {
+    background: linear-gradient(135deg, #5BB8F5, #2A9AD6);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(91,184,245,0.4);
+    transition: transform 0.1s, box-shadow 0.2s;
+  }
+  .send-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(91,184,245,0.5); }
   .send-btn svg { width: 18px; height: 18px; }
 </style>
 </head>
 <body>
+
+<div class="deco deco-1"></div>
+<div class="deco deco-2"></div>
+<div class="deco deco-3"></div>
+
 <header>
   <div class="logo">🧾</div>
   <div class="header-info">
-    <h1>Bot Negocio Mamá</h1>
-    <p>Asistente de ventas, gastos y SAT</p>
+    <h1>Suheid Wong</h1>
+    <p>Ventas · Gastos · SAT</p>
   </div>
   <div class="status-dot"></div>
 </header>
+
 <div class="config-bar">
   <label>Sheet ID:</label>
   <input type="text" id="sheetId" value="1Fb_WVSHJfwNihg1-ETL3HuVtOkbH1MD8sDxrD6LFZ30" />
   <button onclick="conectar()">Conectar</button>
   <span class="connected-badge" id="connectedBadge">✓ Conectado</span>
 </div>
+
 <div class="messages" id="messages">
   <div class="message bot">
     <div class="avatar">🤖</div>
     <div class="bubble">
-      ¡Hola! Soy el asistente del negocio de tu mamá. 👋<br><br>
-      Conectando con Google Sheets...
+      ¡Hola! Conectando con Google Sheets...
     </div>
   </div>
 </div>
+
 <div class="input-area">
   <textarea id="input" placeholder="Pregúntame algo del negocio..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   <button class="send-btn" onclick="sendMessage()">
@@ -91,6 +370,7 @@
     </svg>
   </button>
 </div>
+
 <script>
   const WORKER_URL = 'https://bot-negocio-mama.fidelwong753.workers.dev';
   let sheetData = null;
@@ -268,7 +548,7 @@ REGLAS ESTRICTAS:
 - Cada acción debe ir en su propio JSON separado, uno por línea. NUNCA uses listas o arreglos.
 - Cuando elimines múltiples registros, ponlos de mayor a menor número de fila.
 
-INTERPRETA EL LENGUAJE NATURAL — estos son ejemplos de lo que el usuario puede decir y cómo debes interpretarlo:
+INTERPRETA EL LENGUAJE NATURAL:
 
 REGISTRAR:
 - "agrega", "anota", "registra", "mete", "pon", "añade" → registrar
@@ -277,34 +557,21 @@ REGISTRAR:
 
 ELIMINAR:
 - "borra", "quita", "elimina", "bórra", "quítame", "táchala", "ya no va" → eliminar
-- "borra todo", "elimina todo", "quita todo", "bórralas todas" → eliminar TODOS los registros que existan
-- "borra la de Felipe", "quita la venta de Grupo Baner" → eliminar ese registro específico
+- "borra todo", "elimina todo", "quita todo" → eliminar TODOS los registros
+- "borra la de Felipe", "quita la venta de Grupo Baner" → eliminar ese registro
 
 EDITAR:
-- "cambia", "modifica", "corrige", "actualiza", "era", "el precio estaba mal" → editar
-- "cámbialo a", "en realidad era", "corrígelo" → editar ese registro
+- "cambia", "modifica", "corrige", "actualiza", "cámbialo a", "en realidad era" → editar
 
 CONSULTAR:
 - "cuánto", "qué vendí", "mis ventas", "resumen", "cuánto debo" → solo responder sin JSON
 
-ACCIONES — pon cada JSON en su propia línea al final de tu respuesta:
-
-Registrar venta:
+ACCIONES:
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
-
-Registrar gasto:
 REGISTRAR_GASTO:{"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
-
-Editar venta:
 EDITAR_VENTA:{"fila":0,"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
-
-Editar gasto:
 EDITAR_GASTO:{"fila":0,"fecha":"DD/MM/YYYY","concepto":"","proveedor":"","total":0}
-
-Eliminar venta:
 ELIMINAR_VENTA:{"fila":0}
-
-Eliminar gasto:
 ELIMINAR_GASTO:{"fila":0}
 
 DATOS DEL NEGOCIO:
@@ -338,46 +605,37 @@ Usa $ y formato mexicano para dinero.`;
 
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
-        sheetData = null;
-        needsReorganizeVentas = true;
-        notifications += '\n\n✅ ¡Venta registrada en Google Sheets!';
+        sheetData = null; needsReorganizeVentas = true;
+        notifications += '\n\n✅ ¡Venta registrada!';
       }
-
       for (const g of extractAll(reply, 'REGISTRAR_GASTO')) {
         await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
-        sheetData = null;
-        needsReorganizeGastos = true;
-        notifications += '\n\n✅ ¡Gasto registrado en Google Sheets!';
+        sheetData = null; needsReorganizeGastos = true;
+        notifications += '\n\n✅ ¡Gasto registrado!';
       }
-
       for (const v of extractAll(reply, 'EDITAR_VENTA')) {
         await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
-        sheetData = null;
-        needsReorganizeVentas = true;
-        notifications += '\n\n✅ ¡Venta actualizada en Google Sheets!';
+        sheetData = null; needsReorganizeVentas = true;
+        notifications += '\n\n✅ ¡Venta actualizada!';
       }
-
       for (const g of extractAll(reply, 'EDITAR_GASTO')) {
         await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
-        sheetData = null;
-        needsReorganizeGastos = true;
-        notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
+        sheetData = null; needsReorganizeGastos = true;
+        notifications += '\n\n✅ ¡Gasto actualizado!';
       }
 
       const ventasEliminar = extractAll(reply, 'ELIMINAR_VENTA').sort((a, b) => b.fila - a.fila);
       for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
-        sheetData = null;
-        needsReorganizeVentas = true;
-        notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
+        sheetData = null; needsReorganizeVentas = true;
+        notifications += '\n\n🗑️ ¡Venta eliminada!';
       }
 
       const gastosEliminar = extractAll(reply, 'ELIMINAR_GASTO').sort((a, b) => b.fila - a.fila);
       for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
-        sheetData = null;
-        needsReorganizeGastos = true;
-        notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
+        sheetData = null; needsReorganizeGastos = true;
+        notifications += '\n\n🗑️ ¡Gasto eliminado!';
       }
 
       if (needsReorganizeVentas) await reorganizeSheet('VENTAS');
@@ -411,7 +669,7 @@ Usa $ y formato mexicano para dinero.`;
     av.textContent = role === 'bot' ? '🤖' : '👤';
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.innerHTML = text.includes('<table') ? text : text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    bubble.innerHTML = text.includes('<table') || text.includes('<div') ? text : text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
     div.appendChild(av);
     div.appendChild(bubble);
     msgs.appendChild(div);
