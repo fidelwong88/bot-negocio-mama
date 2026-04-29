@@ -1,0 +1,22 @@
+{
+  "name": "Bot Negocio Mamá",
+  "short_name": "Negocio",
+  "description": "Asistente de ventas, gastos y SAT",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#00e5a0",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://api.dicebear.com/7.x/icons/svg?seed=negocio&backgroundColor=00e5a0",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/icons/svg?seed=negocio&backgroundColor=00e5a0",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
