@@ -185,6 +185,16 @@
     return await res.json();
   }
 
+  async function reorganizeSheet(sheet) {
+    const sheetId = document.getElementById('sheetId').value.trim();
+    const res = await fetch(`${WORKER_URL}/api/sheets/reorganize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheetId, range: sheet })
+    });
+    return await res.json();
+  }
+
   function extractAll(reply, comando) {
     const regex = new RegExp(comando + ':(\\{[^{}]+\\})', 'g');
     const results = [];
@@ -320,28 +330,34 @@ Usa $ y formato mexicano para dinero.`;
       const data = await res.json();
       let reply = data.content[0].text;
       let notifications = '';
+      let needsReorganizeVentas = false;
+      let needsReorganizeGastos = false;
 
       for (const v of extractAll(reply, 'REGISTRAR_VENTA')) {
         await appendToSheet('VENTAS', [[v.fecha, v.folio, v.cliente, v.total]]);
         sheetData = null;
+        needsReorganizeVentas = true;
         notifications += '\n\n✅ ¡Venta registrada en Google Sheets!';
       }
 
       for (const g of extractAll(reply, 'REGISTRAR_GASTO')) {
         await appendToSheet('GASTOS', [[g.fecha, g.concepto, g.proveedor, g.total]]);
         sheetData = null;
+        needsReorganizeGastos = true;
         notifications += '\n\n✅ ¡Gasto registrado en Google Sheets!';
       }
 
       for (const v of extractAll(reply, 'EDITAR_VENTA')) {
         await editSheet('VENTAS', v.fila, [v.fecha, v.folio, v.cliente, v.total]);
         sheetData = null;
+        needsReorganizeVentas = true;
         notifications += '\n\n✅ ¡Venta actualizada en Google Sheets!';
       }
 
       for (const g of extractAll(reply, 'EDITAR_GASTO')) {
         await editSheet('GASTOS', g.fila, [g.fecha, g.concepto, g.proveedor, g.total]);
         sheetData = null;
+        needsReorganizeGastos = true;
         notifications += '\n\n✅ ¡Gasto actualizado en Google Sheets!';
       }
 
@@ -349,6 +365,7 @@ Usa $ y formato mexicano para dinero.`;
       for (const v of ventasEliminar) {
         await deleteFromSheet('VENTAS', v.fila);
         sheetData = null;
+        needsReorganizeVentas = true;
         notifications += '\n\n🗑️ ¡Venta eliminada de Google Sheets!';
       }
 
@@ -356,8 +373,13 @@ Usa $ y formato mexicano para dinero.`;
       for (const g of gastosEliminar) {
         await deleteFromSheet('GASTOS', g.fila);
         sheetData = null;
+        needsReorganizeGastos = true;
         notifications += '\n\n🗑️ ¡Gasto eliminado de Google Sheets!';
       }
+
+      // Reorganizar después de cualquier cambio
+      if (needsReorganizeVentas) await reorganizeSheet('VENTAS');
+      if (needsReorganizeGastos) await reorganizeSheet('GASTOS');
 
       reply = reply
         .replace(/REGISTRAR_VENTA:\{[^{}]+\}/g, '')
