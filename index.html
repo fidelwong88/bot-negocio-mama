@@ -201,110 +201,47 @@
   }
 
   // ============================================================
-  // CONFIRMACIÓN — prioridad máxima
+  // USAR EL BOT SOLO PARA CLASIFICAR INTENCIONES
+  // Devuelve: eliminar | eliminar_todo | consultar | registrar | editar | confirmar | desconocido
   // ============================================================
-  function esConfirmacion(text) {
-    const t = n(text);
-    const palabras = ['si','sii','siii','yes','dale','ok','claro','anda','confirmo',
-      'adelante','procede','hazlo','venga','perfecto','correcto','afirmativo',
-      'sure','yep','porfa','orale','andale','sip','simon','va','bueno','listo',
-      'hecho','anda','yep','np','sale','va va','ahi va','ahi'];
-    return palabras.some(p => t === p || t === p + '!' || t.startsWith(p + ' ') || t.endsWith(' ' + p) || t.includes(p));
-  }
+  async function clasificarIntencion(text) {
+    const prompt = `Clasifica este mensaje en UNA sola palabra. Solo responde la palabra, nada más.
 
-  // ============================================================
-  // DETECCIÓN DE INTENCIONES
-  // ============================================================
-  function detectarIntencion(text) {
-    const t = n(text);
+Mensaje: "${text}"
 
-    const eliminar = ['borra','quita','elimina','borrar','quitar','eliminar','tacha',
-      'tachala','sacala','sacalo','saca','cancela','remueve','remover','bora',
-      'elimna','quta','ya no va','desaparece','quitalo','borralo','eliminalo',
-      'fuera','afuera','jala','jalalo'];
-    if (eliminar.some(p => t.includes(p))) return 'eliminar';
+Categorías:
+- "confirmar" → el usuario acepta algo (sí, dale, ok, claro, va, perfecto, orale, sale, sip, simon, yes, sure, andale, venga, anda, bueno, listo, hecho, np, yep, afirmativo, procede, hazlo, adelante, porfa, borralos, eliminalos)
+- "eliminar_todo" → quiere borrar/eliminar/quitar todos los registros (todo, todos, todas, limpiar, vaciar)
+- "eliminar" → quiere borrar/eliminar/quitar un registro específico (borra, quita, elimina, tacha, saca, cancela, remueve, fuera, afuera, jala — con cualquier error ortográfico)
+- "consultar" → quiere ver/mostrar/listar ventas, gastos, resumen, totales, cuánto debe al SAT
+- "registrar" → quiere agregar/anotar/meter/registrar una venta o gasto nueva
+- "editar" → quiere cambiar/modificar/corregir/actualizar un registro existente
+- "desconocido" → no encaja en ninguna categoría anterior
 
-    const ver = ['ver','muestra','muestrame','ensena','enseñame','lista','listame',
-      'dame','dime','cuanto','cuantos','cuantas','que vendi','que gaste','mis ventas',
-      'mis gastos','ventas del','gastos del','resumen','total','cuanto debo','sat',
-      'iva','isr','reporte','informe','tengo','hay','existe','ver ventas','ver gastos'];
-    if (ver.some(p => t.includes(p))) return 'consultar';
+Responde SOLO la palabra:`;
 
-    const agregar = ['agrega','registra','anota','mete','pon','anade','agegra',
-      'registar','anega','vendi','vente','vendio','gaste','pague','compre',
-      'nueva venta','nuevo gasto','agregar','registrar','anotar','meter','poner',
-      'añade','añadir'];
-    if (agregar.some(p => t.includes(p))) return 'registrar';
-
-    const editar = ['cambia','modifica','corrige','actualiza','edita','cambialo',
-      'modificalo','corrigelo','en realidad','estaba mal','era','cambiar',
-      'modificar','corregir','actualizar','editar','arregla','arreglar',
-      'rectifica','rectificar'];
-    if (editar.some(p => t.includes(p))) return 'editar';
-
-    return 'bot';
-  }
-
-  function normalizarNombre(str) {
-    const t = n(str);
-    if (t.includes('baner') || t.includes('baaner')) return 'Grupo Baner';
-    if (t.includes('jonhy') || t.includes('johny') || t.includes('jonny')) return 'Grupo Jonhy';
-    if (t.includes('aeropuerto') || t.includes('aero')) return 'Aeropuerto';
-    if (t.includes('felipe') || t.includes('felip')) return 'Felipe';
-    return str;
-  }
-
-  function extraerDatos(text) {
-    const resultado = {};
-    const montoMatch = text.match(/\$?\s*(\d+(?:[.,]\d+)?)/);
-    if (montoMatch) resultado.total = parseFloat(montoMatch[1].replace(',', '.'));
-    const fechaCompleta = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if (fechaCompleta) {
-      const d = fechaCompleta[1].padStart(2,'0');
-      const m = fechaCompleta[2].padStart(2,'0');
-      const y = fechaCompleta[3].length === 2 ? '20' + fechaCompleta[3] : fechaCompleta[3];
-      resultado.fecha = `${d}/${m}/${y}`;
-    } else {
-      const diaMatch = text.match(/(?:del?|el)\s+(\d{1,2})/i);
-      if (diaMatch) resultado.diaBusqueda = diaMatch[1].padStart(2,'0');
-    }
-    return resultado;
-  }
-
-  function buscarRegistros(text) {
-    const t = n(text);
-    const datos = extraerDatos(text);
-    const encontrados = [];
-
-    const buscarEn = (sheet, rows, getDesc) => {
-      rows.slice(1).forEach((r, i) => {
-        if (!r[0]) return;
-        const fecha = n(r[0]);
-        const campo2 = n(r[2] || '');
-        const campo1 = n(r[1] || '');
-        const total = n((r[3] || '').replace(/\$|,/g, ''));
-        let score = 0;
-
-        if (datos.diaBusqueda) {
-          const partes = fecha.split('/');
-          if (partes[0] === datos.diaBusqueda) score += 3;
-        }
-        if (datos.fecha && fecha === n(datos.fecha)) score += 5;
-        if (campo2 && t.includes(campo2)) score += 4;
-        if (campo1 && t.includes(campo1)) score += 2;
-        const nombreNorm = n(normalizarNombre(campo2));
-        if (nombreNorm.split(' ').some(p => p.length > 3 && t.includes(p))) score += 3;
-        if (datos.total && Math.abs(parseFloat(total.replace('$','')) - datos.total) < 0.01) score += 4;
-
-        if (score > 0) encontrados.push({ sheet, fila: i+2, score, desc: getDesc(r) });
+    try {
+      const res = await fetch(`${WORKER_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 10,
+          system: 'Eres un clasificador. Responde SOLO una palabra de las categorías indicadas.',
+          messages: [{ role: 'user', content: prompt }]
+        })
       });
-    };
-
-    if (sheetData?.['VENTAS']) buscarEn('VENTAS', sheetData['VENTAS'], r => `${r[0]} — ${r[2]||''} — ${r[3]||''}`);
-    if (sheetData?.['GASTOS']) buscarEn('GASTOS', sheetData['GASTOS'], r => `${r[0]} — ${r[1]||''} — ${r[3]||''}`);
-    return encontrados.sort((a,b) => b.score - a.score);
+      const data = await res.json();
+      const intencion = n(data.content[0].text).replace(/[^a-z_]/g, '');
+      return intencion;
+    } catch(e) {
+      return 'desconocido';
+    }
   }
 
+  // ============================================================
+  // TABLAS DESDE SHEETS
+  // ============================================================
   function mostrarVentas(filtroMes) {
     if (!sheetData?.['VENTAS']?.length) return 'No hay ventas registradas.';
     let rows = sheetData['VENTAS'].slice(1).filter(r => r[0]);
@@ -347,19 +284,59 @@
       'junio':'/06/','julio':'/07/','agosto':'/08/','septiembre':'/09/','octubre':'/10/',
       'noviembre':'/11/','diciembre':'/12/' };
     let filtroMes = null;
-    if (t.includes('este mes')) {
-      filtroMes = '/' + String(new Date().getMonth()+1).padStart(2,'0') + '/';
-    } else {
-      for (const [nombre, num] of Object.entries(meses)) {
-        if (t.includes(nombre)) { filtroMes = num; break; }
-      }
-    }
+    if (t.includes('este mes')) filtroMes = '/' + String(new Date().getMonth()+1).padStart(2,'0') + '/';
+    else for (const [nombre, num] of Object.entries(meses)) { if (t.includes(nombre)) { filtroMes = num; break; } }
+
     if (t.includes('sat') || t.includes('iva') || t.includes('isr') || t.includes('debo') || t.includes('impuesto')) {
       return 'Resumen SAT:\n' + mostrarResumenSAT();
     }
     if (t.includes('gasto') && !t.includes('venta')) return 'Gastos registrados:\n' + mostrarGastos(filtroMes);
     if (t.includes('venta') || t.includes('vendi')) return 'Ventas registradas:\n' + mostrarVentas(filtroMes);
     return 'Ventas:\n' + mostrarVentas(filtroMes) + '\n\nGastos:\n' + mostrarGastos(filtroMes);
+  }
+
+  function buscarRegistros(text) {
+    const t = n(text);
+    const encontrados = [];
+    const diaMatch = text.match(/(?:del?|el)\s+(\d{1,2})/i);
+    const diaBusqueda = diaMatch ? diaMatch[1].padStart(2,'0') : null;
+    const fechaMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    const fechaBusqueda = fechaMatch ? `${fechaMatch[1].padStart(2,'0')}/${fechaMatch[2].padStart(2,'0')}/${fechaMatch[3].length===2?'20'+fechaMatch[3]:fechaMatch[3]}` : null;
+    const montoMatch = text.match(/\$?\s*(\d+(?:[.,]\d+)?)/);
+    const montoBusqueda = montoMatch ? parseFloat(montoMatch[1].replace(',','.')) : null;
+
+    const aliasNombres = {
+      'baner':'baner','baaner':'baner','bander':'baner',
+      'jonhy':'jonhy','johny':'jonhy','jonny':'jonhy','johnny':'jonhy',
+      'aero':'aeropuerto','aerp':'aeropuerto',
+      'felipe':'felipe','felip':'felipe','lorena':'lorena'
+    };
+
+    const buscarEn = (sheet, rows, getDesc) => {
+      rows.slice(1).forEach((r, i) => {
+        if (!r[0]) return;
+        const fecha = n(r[0]);
+        const campo2 = n(r[2] || '');
+        const campo1 = n(r[1] || '');
+        const totalStr = n((r[3] || '').replace(/\$|,/g, ''));
+        let score = 0;
+
+        if (diaBusqueda && fecha.split('/')[0] === diaBusqueda) score += 3;
+        if (fechaBusqueda && fecha === n(fechaBusqueda)) score += 5;
+        if (campo2 && t.includes(campo2)) score += 4;
+        if (campo1 && t.includes(campo1)) score += 2;
+        for (const [alias, base] of Object.entries(aliasNombres)) {
+          if (t.includes(alias) && campo2.includes(base)) score += 3;
+        }
+        if (montoBusqueda && Math.abs(parseFloat(totalStr) - montoBusqueda) < 0.01) score += 4;
+
+        if (score > 0) encontrados.push({ sheet, fila: i+2, score, desc: getDesc(r) });
+      });
+    };
+
+    if (sheetData?.['VENTAS']) buscarEn('VENTAS', sheetData['VENTAS'], r => `${r[0]} — ${r[2]||''} — ${r[3]||''}`);
+    if (sheetData?.['GASTOS']) buscarEn('GASTOS', sheetData['GASTOS'], r => `${r[0]} — ${r[1]||''} — ${r[3]||''}`);
+    return encontrados.sort((a,b) => b.score - a.score);
   }
 
   async function ejecutarEliminacion(registros) {
@@ -401,6 +378,9 @@
     return ctx || 'Sin datos aún.';
   }
 
+  // ============================================================
+  // SEND MESSAGE PRINCIPAL
+  // ============================================================
   async function sendMessage() {
     const input = document.getElementById('input');
     const text = input.value.trim();
@@ -412,63 +392,65 @@
 
     if (!sheetData) sheetData = await fetchSheets(document.getElementById('sheetId').value.trim());
 
-    // ============================================================
-    // PRIORIDAD MÁXIMA: si hay eliminación pendiente, revisar confirmación primero
-    // ============================================================
+    // PRIORIDAD MÁXIMA: confirmación pendiente — el bot clasifica si es confirmación
     if (pendingDelete) {
-      if (esConfirmacion(text)) {
+      const typingId = addTyping();
+      const intencion = await clasificarIntencion(text);
+      removeTyping(typingId);
+
+      if (intencion === 'confirmar') {
         history.push({ role: 'user', content: text });
         await ejecutarEliminacion(pendingDelete);
         return;
       } else {
-        // No confirmó — cancelar eliminación y continuar normal
         pendingDelete = null;
+        // continuar con el flujo normal
       }
     }
 
-    const intencion = detectarIntencion(text);
+    // Clasificar intención con el bot
+    const typingId = addTyping();
+    const intencion = await clasificarIntencion(text);
+    removeTyping(typingId);
+
+    history.push({ role: 'user', content: text });
 
     // ---- CONSULTAR ----
     if (intencion === 'consultar') {
       const respuesta = manejarConsulta(text);
-      history.push({ role: 'user', content: text });
       history.push({ role: 'assistant', content: respuesta });
       addMessage('bot', respuesta);
       return;
     }
 
-    // ---- ELIMINAR ----
-    if (intencion === 'eliminar') {
+    // ---- ELIMINAR TODO ----
+    if (intencion === 'eliminar_todo') {
       const t = n(text);
-      const esMasiva = t.includes('todo') || t.includes('todos') || t.includes('todas') || t.includes('limpiar') || t.includes('vaciar');
+      const soloVentas = t.includes('venta') && !t.includes('gasto');
+      const soloGastos = t.includes('gasto') && !t.includes('venta');
+      const ambos = !soloVentas && !soloGastos;
+      const registros = [];
+      if (ambos || soloVentas) sheetData['VENTAS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} ${r[2]}` }); });
+      if (ambos || soloGastos) sheetData['GASTOS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} ${r[1]}` }); });
 
-      if (esMasiva) {
-        const soloVentas = t.includes('venta') && !t.includes('gasto');
-        const soloGastos = t.includes('gasto') && !t.includes('venta');
-        const ambos = !soloVentas && !soloGastos;
-        const registros = [];
-        if (ambos || soloVentas) sheetData['VENTAS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'VENTAS', fila: i+2, desc: `${r[0]} ${r[2]}` }); });
-        if (ambos || soloGastos) sheetData['GASTOS']?.slice(1).forEach((r, i) => { if (r[0]) registros.push({ sheet: 'GASTOS', fila: i+2, desc: `${r[0]} ${r[1]}` }); });
-
-        if (!registros.length) {
-          const msg = 'No hay registros que eliminar.';
-          history.push({ role: 'user', content: text });
-          addMessage('bot', msg);
-          history.push({ role: 'assistant', content: msg });
-          return;
-        }
-        pendingDelete = registros;
-        history.push({ role: 'user', content: text });
-        const msg = `¿Confirmas? Se eliminarán ${registros.length} registros de Google Sheets.`;
+      if (!registros.length) {
+        const msg = 'No hay registros que eliminar.';
         addMessage('bot', msg);
         history.push({ role: 'assistant', content: msg });
         return;
       }
+      pendingDelete = registros;
+      const msg = `¿Confirmas? Se eliminarán ${registros.length} registros de Google Sheets.`;
+      addMessage('bot', msg);
+      history.push({ role: 'assistant', content: msg });
+      return;
+    }
 
+    // ---- ELIMINAR ESPECÍFICO ----
+    if (intencion === 'eliminar') {
       const encontrados = buscarRegistros(text);
       if (encontrados.length > 0) {
         pendingDelete = encontrados;
-        history.push({ role: 'user', content: text });
         const msg = encontrados.length === 1
           ? `¿Confirmas eliminar: ${encontrados[0].desc}?`
           : `Encontré ${encontrados.length} registros:\n${encontrados.slice(0,5).map((r,i) => `${i+1}. ${r.desc}`).join('\n')}\n\n¿Confirmas eliminar todos?`;
@@ -476,18 +458,22 @@
         history.push({ role: 'assistant', content: msg });
         return;
       }
-
-      history.push({ role: 'user', content: text });
       const msg = '¿De cuál registro? Dime el cliente, fecha o monto.';
       addMessage('bot', msg);
       history.push({ role: 'assistant', content: msg });
       return;
     }
 
-    // ---- REGISTRAR / EDITAR — usar el bot ----
-    history.push({ role: 'user', content: text });
-    const typingId = addTyping();
+    // ---- DESCONOCIDO ----
+    if (intencion === 'desconocido') {
+      const msg = 'No entendí bien. Puedo ayudarte a:\n• Ver ventas o gastos\n• Registrar una venta o gasto\n• Editar un registro\n• Eliminar un registro\n\n¿Qué necesitas?';
+      addMessage('bot', msg);
+      history.push({ role: 'assistant', content: msg });
+      return;
+    }
 
+    // ---- REGISTRAR / EDITAR — usar el bot ----
+    const typingId2 = addTyping();
     try {
       const ctx = buildContext(sheetData);
       const hoy = getFechaHoy();
@@ -498,7 +484,7 @@ Fecha hoy: ${hoy}.
 El monto dado es el TOTAL FINAL. NUNCA calcules IVA ni subtotal ni los menciones.
 Si faltan datos (cliente o monto), pregunta qué falta.
 NOMBRES: "baner"→Grupo Baner, "jonhy/johny"→Grupo Jonhy, "aero"→Aeropuerto, "felipe"→Felipe
-ERRORES DE TIPEO: "agegra"=agrega, "benta"=venta, "pague"=pagué
+ERRORES DE TIPEO: entiende cualquier variación de palabras en español mexicano.
 
 ACCIONES (al final, una por línea):
 REGISTRAR_VENTA:{"fecha":"DD/MM/YYYY","folio":"","cliente":"nombre","total":0}
@@ -515,7 +501,7 @@ ${ctx}`;
         body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, system: systemPrompt, messages: history })
       });
 
-      removeTyping(typingId);
+      removeTyping(typingId2);
       if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'Error API'); }
 
       const data = await res.json();
@@ -565,7 +551,7 @@ ${ctx}`;
       addMessage('bot', reply);
 
     } catch(e) {
-      removeTyping(typingId);
+      removeTyping(typingId2);
       history.pop();
       addMessage('bot', '❌ Error: ' + e.message);
     }
